@@ -4,8 +4,10 @@
     "slug": "staydirect-pune",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "staydirect",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "primaryColor": "#00362A",
     "splash": {
       "backgroundColor": "#00362A",
       "resizeMode": "contain"
@@ -15,10 +17,19 @@
       "bundleIdentifier": "com.staydirect.pune"
     },
     "android": {
+      "package": "com.staydirect.pune",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#00362A"
       },
-      "package": "com.staydirect.pune"
+      "permissions": [
+        "INTERNET",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png"

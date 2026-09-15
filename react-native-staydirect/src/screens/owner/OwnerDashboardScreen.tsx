@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -13,6 +13,8 @@ import { THEME } from '../../constants/theme';
 import { Header } from '../../components/Header';
 import { useOwnerData } from '../../hooks/useUserInteractions';
 import { useAuth } from '../../context/AuthContext';
+import { useOwnerSubscription } from '../../hooks/usePayments';
+import { OwnerSubscriptionScreen } from './subscription/OwnerSubscriptionScreen';
 
 interface OwnerDashboardScreenProps {
   onAddNewHostel: () => void;
@@ -22,6 +24,8 @@ export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({
   onAddNewHostel,
 }) => {
   const { role, switchDevRole } = useAuth();
+  const [showSubscriptions, setShowSubscriptions] = useState(false);
+  const { subscription } = useOwnerSubscription();
   const {
     hostels,
     bookings,
@@ -29,6 +33,10 @@ export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({
     updateBookingStatus,
     toggleAvailability,
   } = useOwnerData();
+
+  if (showSubscriptions) {
+    return <OwnerSubscriptionScreen onBack={() => setShowSubscriptions(false)} />;
+  }
 
   // Calculated metrics
   const totalBeds = hostels.reduce((acc, h) => acc + (h.total_beds || 0), 0) || 54;
@@ -82,6 +90,37 @@ export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({
             <Text style={styles.metricLabel}>Occupied</Text>
           </View>
         </View>
+
+        {/* Subscription & Partner Status Card */}
+        <TouchableOpacity
+          style={styles.partnerBanner}
+          onPress={() => setShowSubscriptions(true)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.partnerIconWrap}>
+            <Ionicons name="ribbon-outline" size={22} color="#0284C7" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.partnerPlanName}>
+                {subscription?.plan_name === 'pro_partner'
+                  ? 'Direct Pro Partner'
+                  : subscription?.plan_name === 'campus_fleet'
+                  ? 'Campus Fleet Enterprise'
+                  : 'Starter Free Plan'}
+              </Text>
+              <View style={styles.partnerBadge}>
+                <Text style={styles.partnerBadgeText}>
+                  {subscription?.status === 'active' ? 'ACTIVE' : 'UPGRADE'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.partnerPlanSub}>
+              Top Pune search ranking, verified badge & priority vacancy leads.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#0284C7" />
+        </TouchableOpacity>
 
         {/* Add Property CTA */}
         <TouchableOpacity style={styles.addPropertyBtn} onPress={onAddNewHostel}>
@@ -256,6 +295,45 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  partnerBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    padding: 14,
+    borderRadius: THEME.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+    marginBottom: 16,
+  },
+  partnerIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  partnerPlanName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0369A1',
+  },
+  partnerBadge: {
+    backgroundColor: '#BAE6FD',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  partnerBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#0369A1',
+  },
+  partnerPlanSub: {
+    fontSize: 11,
+    color: '#0284C7',
     marginTop: 2,
   },
   addPropertyBtn: {

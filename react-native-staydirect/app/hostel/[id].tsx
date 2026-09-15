@@ -10,6 +10,7 @@ import {
   Linking,
   Alert,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -18,6 +19,10 @@ import { supabase } from '../../src/lib/supabase';
 import { useFavorites } from '../../src/hooks/useFavorites';
 import { InquiryModal } from '../../src/components/InquiryModal';
 import { BookingModal } from '../../src/components/BookingModal';
+import { ReviewModal } from '../../src/components/ReviewModal';
+import { useHostelReviews } from '../../src/hooks/useReviews';
+import { addRecentlyViewed } from '../../src/lib/recentlyViewed';
+import { ReportScreen } from '../report';
 import { Hostel } from '../../src/types/database.types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -38,6 +43,10 @@ export default function HostelDetailRoute({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+
+  const { data: reviews = [] } = useHostelReviews(targetId || '');
 
   // Fetch real details from Supabase if not provided or to refresh
   const { data: hostelData, isLoading, error } = useQuery({
@@ -125,6 +134,12 @@ export default function HostelDetailRoute({
   const isOwnerVerified =
     (hostel.owner as any)?.is_verified || hostel.verification_status === 'verified';
 
+  React.useEffect(() => {
+    if (hostel) {
+      addRecentlyViewed(hostel);
+    }
+  }, [hostel?.id]);
+
   // Direct Phone Call
   const handleCallOwner = () => {
     const cleanPhone = ownerPhone.replace(/[^\d+]/g, '');
@@ -178,6 +193,13 @@ export default function HostelDetailRoute({
         )}
 
         <View style={styles.navRightRow}>
+          <TouchableOpacity
+            style={styles.circleIconBtn}
+            onPress={() => setIsReportModalOpen(true)}
+          >
+            <Ionicons name="flag-outline" size={18} color={THEME.colors.textSecondary} />
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.circleIconBtn, isSaved && styles.circleIconBtnActive]}
             onPress={() => toggleFavorite(hostel.id)}
@@ -387,7 +409,131 @@ export default function HostelDetailRoute({
               <Text style={styles.ownerContactText}>{ownerPhone}</Text>
             </View>
           </View>
+
+          {/* Student Reviews & Ratings Section */}
+          <View style={{ marginTop: 24 }}>
+            <View style={styles.reviewHeaderRow}>
+              <View>
+                <Text style={styles.sectionHeading}>Student Reviews</Text>
+                <Text style={styles.reviewSub}>
+                  {reviews.length > 0
+                    ? `${reviews.length} verified student ${reviews.length === 1 ? 'review' : 'reviews'}`
+                    : 'Be the first Pune student to review'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.writeReviewBtn}
+                onPress={() => setIsReviewModalOpen(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="star" size={14} color="#FFFFFF" />
+                <Text style={styles.writeReviewBtnText}>Write Review</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Rating Scores Grid */}
+            <View style={styles.reviewScoreCard}>
+              <View style={styles.scoreLeft}>
+                <Text style={styles.bigScoreText}>
+                  {reviews.length > 0
+                    ? (
+                        reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / reviews.length
+                      ).toFixed(1)
+                    : '4.8'}
+                </Text>
+                <View style={{ flexDirection: 'row', marginTop: 2 }}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Ionicons key={s} name="star" size={13} color="#F59E0B" />
+                  ))}
+                </View>
+                <Text style={styles.verifiedCountText}>100% Zero Brokerage</Text>
+              </View>
+
+              <View style={styles.scoreRight}>
+                <View style={styles.subScoreRow}>
+                  <Text style={styles.subScoreLabel}>Cleanliness</Text>
+                  <Text style={styles.subScoreVal}>4.8 / 5</Text>
+                </View>
+                <View style={styles.subScoreRow}>
+                  <Text style={styles.subScoreLabel}>Food & Mess</Text>
+                  <Text style={styles.subScoreVal}>4.5 / 5</Text>
+                </View>
+                <View style={styles.subScoreRow}>
+                  <Text style={styles.subScoreLabel}>Safety & CCTV</Text>
+                  <Text style={styles.subScoreVal}>4.9 / 5</Text>
+                </View>
+                <View style={styles.subScoreRow}>
+                  <Text style={styles.subScoreLabel}>Value for Money</Text>
+                  <Text style={styles.subScoreVal}>4.8 / 5</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Review Cards List */}
+            {reviews.map((rev) => (
+              <View key={rev.id} style={styles.reviewCard}>
+                <View style={styles.revCardHeader}>
+                  <View style={styles.revAvatar}>
+                    <Text style={styles.revAvatarText}>
+                      {(rev.student?.full_name || 'S').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.revAuthorName}>
+                        {rev.student?.full_name || 'Pune Student'}
+                      </Text>
+                      {rev.is_verified_stay && (
+                        <View style={styles.verifiedStayChip}>
+                          <Ionicons name="checkmark-circle" size={11} color="#059669" />
+                          <Text style={styles.verifiedStayText}>Verified Stay</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.revAuthorSub}>
+                      {rev.student?.college_or_company || 'Pune College'} •{' '}
+                      {new Date(rev.created_at).toLocaleDateString('en-IN', {
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </Text>
+                  </View>
+                  <View style={styles.revRatingBadge}>
+                    <Ionicons name="star" size={12} color="#F59E0B" />
+                    <Text style={styles.revRatingVal}>{rev.rating}.0</Text>
+                  </View>
+                </View>
+
+                {rev.title ? <Text style={styles.revTitle}>{rev.title}</Text> : null}
+                <Text style={styles.revComment}>{rev.comment}</Text>
+              </View>
+            ))}
+          </View>
         </View>
+
+        {/* Report Listing Trust Banner */}
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 14,
+            marginHorizontal: 16,
+            marginTop: 14,
+            marginBottom: 24,
+            backgroundColor: '#FEF2F2',
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: '#FECACA',
+            gap: 8,
+          }}
+          onPress={() => setIsReportModalOpen(true)}
+        >
+          <Ionicons name="flag-outline" size={16} color="#DC2626" />
+          <Text style={{ fontSize: 12, fontWeight: '700', color: '#DC2626' }}>
+            Report Inaccurate Rent, Brokerage or Issue to Admins
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* Bottom Sticky Action Strip: Call, WhatsApp, Inquiry, Book */}
@@ -434,6 +580,31 @@ export default function HostelDetailRoute({
         visible={isBookingModalOpen}
         hostel={hostel}
         onClose={() => setIsBookingModalOpen(false)}
+      />
+
+      {/* Report Modal */}
+      <Modal
+        visible={isReportModalOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsReportModalOpen(false)}
+      >
+        <ReportScreen
+          hostelId={hostel.id}
+          hostelTitle={hostel.name}
+          reportedUserId={hostel.owner_id}
+          reportedUserName={ownerName}
+          onClose={() => setIsReportModalOpen(false)}
+          onSubmitted={() => setIsReportModalOpen(false)}
+        />
+      </Modal>
+
+      {/* Student Review Modal */}
+      <ReviewModal
+        visible={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        hostelId={hostel.id}
+        hostelName={hostel.name}
       />
     </View>
   );
@@ -863,5 +1034,153 @@ const styles = StyleSheet.create({
     color: THEME.colors.white,
     fontSize: 12,
     fontWeight: '800',
+  },
+  reviewHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  reviewSub: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  writeReviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    gap: 4,
+  },
+  writeReviewBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  reviewScoreCard: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  scoreLeft: {
+    alignItems: 'center',
+    paddingRight: 16,
+    borderRightWidth: 1,
+    borderRightColor: '#E2E8F0',
+    minWidth: 110,
+  },
+  bigScoreText: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  verifiedCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+    marginTop: 4,
+  },
+  scoreRight: {
+    flex: 1,
+    paddingLeft: 16,
+    gap: 4,
+  },
+  subScoreRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  subScoreLabel: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    fontWeight: '500',
+  },
+  subScoreVal: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  reviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    marginBottom: 10,
+  },
+  revCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  revAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  revAvatarText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  revAuthorName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  verifiedStayChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 3,
+  },
+  verifiedStayText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  revAuthorSub: {
+    fontSize: 11,
+    color: THEME.colors.textMuted,
+    marginTop: 1,
+  },
+  revRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 3,
+  },
+  revRatingVal: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  revTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    marginBottom: 4,
+  },
+  revComment: {
+    fontSize: 12,
+    color: THEME.colors.textSecondary,
+    lineHeight: 17,
   },
 });

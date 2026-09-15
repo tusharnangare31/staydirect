@@ -13,10 +13,15 @@ import { THEME } from '../../constants/theme';
 import { Header } from '../../components/Header';
 import { useStudentBookings, useStudentInquiries } from '../../hooks/useUserInteractions';
 import { useAuth } from '../../context/AuthContext';
+import { Booking, Payment } from '../../types/database.types';
+import { PaymentFlowModal } from './payment/PaymentFlowModal';
+import { PaymentReceiptModal } from './payment/PaymentReceiptModal';
 
 export const StudentBookingsScreen: React.FC<{ onExplore: () => void }> = ({ onExplore }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'bookings' | 'visits'>('bookings');
+  const [activePaymentBooking, setActivePaymentBooking] = useState<Booking | null>(null);
+  const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
 
   const {
     data: bookings,
@@ -116,6 +121,49 @@ export const StudentBookingsScreen: React.FC<{ onExplore: () => void }> = ({ onE
                     <Text style={styles.brokerageFree}>₹0 (Free)</Text>
                   </View>
                 </View>
+
+                {/* Payment Actions */}
+                <View style={styles.actionRow}>
+                  {item.status === 'pending' && (
+                    <TouchableOpacity
+                      style={styles.payDepositBtn}
+                      onPress={() => setActivePaymentBooking(item)}
+                    >
+                      <Ionicons name="card-outline" size={15} color="#FFFFFF" />
+                      <Text style={styles.payDepositText}>
+                        Pay Deposit ₹{item.security_deposit}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {(item.status === 'approved' || item.status === 'confirmed') && (
+                    <TouchableOpacity
+                      style={styles.viewReceiptBtn}
+                      onPress={() => {
+                        setReceiptPayment({
+                          id: `pay_rec_${item.id.slice(0, 8)}`,
+                          user_id: item.student_id,
+                          booking_id: item.id,
+                          owner_id: item.owner_id,
+                          payment_provider: 'razorpay',
+                          provider_order_id: `order_${item.id.slice(0, 10)}`,
+                          provider_payment_id: `pay_confirmed_${item.id.slice(0, 8)}`,
+                          amount: item.security_deposit + 99,
+                          currency: 'INR',
+                          payment_type: 'booking_deposit',
+                          status: 'paid',
+                          paid_at: item.created_at,
+                          created_at: item.created_at,
+                          updated_at: item.created_at,
+                          hostel: item.hostel,
+                        });
+                      }}
+                    >
+                      <Ionicons name="document-text-outline" size={15} color={THEME.colors.primary} />
+                      <Text style={styles.viewReceiptText}>View Receipt</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             );
           }}
@@ -196,6 +244,50 @@ export const StudentBookingsScreen: React.FC<{ onExplore: () => void }> = ({ onE
           }
         />
       )}
+
+      {/* Payment Flow Modal */}
+      {activePaymentBooking && (
+        <PaymentFlowModal
+          visible={!!activePaymentBooking}
+          onClose={() => setActivePaymentBooking(null)}
+          hostel={
+            activePaymentBooking.hostel || {
+              id: activePaymentBooking.hostel_id,
+              owner_id: activePaymentBooking.owner_id,
+              name: 'StayDirect Verified Hostel',
+              area: 'Pune',
+              city: 'Pune',
+              address: 'Pune, Maharashtra',
+              monthly_rent: activePaymentBooking.monthly_rent,
+              monthly_rent_min: activePaymentBooking.monthly_rent,
+              monthly_rent_max: activePaymentBooking.monthly_rent,
+              security_deposit: activePaymentBooking.security_deposit,
+              gender_preference: 'unisex',
+              verification_status: 'verified',
+              rating: 4.8,
+              review_count: 12,
+              description: 'Zero Brokerage stay',
+              latitude: 18.5204,
+              longitude: 73.8567,
+              created_at: new Date().toISOString(),
+            }
+          }
+          booking={activePaymentBooking}
+          moveInDate={activePaymentBooking.move_in_date}
+          durationMonths={activePaymentBooking.duration_months}
+          onPaymentSuccess={() => {
+            refetchBookings();
+          }}
+        />
+      )}
+
+      {/* Payment Receipt Modal */}
+      <PaymentReceiptModal
+        visible={!!receiptPayment}
+        onClose={() => setReceiptPayment(null)}
+        payment={receiptPayment}
+        hostelName={receiptPayment?.hostel?.name}
+      />
     </View>
   );
 };
@@ -348,6 +440,44 @@ const styles = StyleSheet.create({
   },
   exploreBtnText: {
     color: THEME.colors.white,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: THEME.colors.borderLight,
+    gap: 8,
+  },
+  payDepositBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: THEME.borderRadius.md,
+    gap: 6,
+  },
+  payDepositText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  viewReceiptBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: THEME.colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: THEME.borderRadius.md,
+    gap: 6,
+  },
+  viewReceiptText: {
+    color: THEME.colors.primary,
     fontSize: 12,
     fontWeight: '700',
   },

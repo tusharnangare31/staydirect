@@ -15,6 +15,7 @@ import { THEME } from '../constants/theme';
 import { Hostel } from '../types/database.types';
 import { useStudentBookings } from '../hooks/useUserInteractions';
 import { useAuth } from '../context/AuthContext';
+import { PaymentFlowModal } from '../screens/student/payment/PaymentFlowModal';
 
 interface BookingModalProps {
   visible: boolean;
@@ -39,6 +40,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [moveInDate, setMoveInDate] = useState('2025-07-01');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createdBooking, setCreatedBooking] = useState<any>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Selected room calculation
   const selectedRoom = hostel.rooms?.find(
@@ -56,7 +59,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      await createBooking({
+      const booking = await createBooking({
         hostel_id: hostel.id,
         owner_id: hostel.owner_id,
         sharing_type: selectedSharing,
@@ -67,10 +70,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         notes: notes.trim(),
       });
 
+      setCreatedBooking(booking);
+
       Alert.alert(
         'Booking Request Submitted! 🎉',
-        `Your request for ${hostel.name} has been sent directly to the owner without brokerage fees. The owner will review and confirm your vacancy.`,
-        [{ text: 'Great!', onPress: onClose }]
+        `Your request for ${hostel.name} has been sent directly to the owner without brokerage. Would you like to pay your refundable deposit now to guarantee your vacancy?`,
+        [
+          {
+            text: 'Pay Later',
+            style: 'cancel',
+            onPress: onClose,
+          },
+          {
+            text: 'Pay Deposit Now',
+            onPress: () => {
+              setShowPaymentModal(true);
+            },
+          },
+        ]
       );
     } catch (e: any) {
       Alert.alert('Booking Error', e.message || 'Could not submit booking.');
@@ -226,6 +243,24 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         </View>
       </View>
     </Modal>
+
+    {/* Payment Flow Modal for Deposit */}
+    <PaymentFlowModal
+      visible={showPaymentModal}
+      onClose={() => {
+        setShowPaymentModal(false);
+        onClose();
+      }}
+      hostel={hostel}
+      room={selectedRoom as any}
+      booking={createdBooking}
+      moveInDate={moveInDate}
+      durationMonths={durationMonths}
+      onPaymentSuccess={() => {
+        // Handled inside PaymentFlowModal
+      }}
+    />
+    </>
   );
 };
 

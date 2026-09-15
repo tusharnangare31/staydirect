@@ -11,6 +11,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { THEME } from '../../constants/theme';
 import { Header } from '../../components/Header';
 import { useAuth } from '../../context/AuthContext';
+import { PaymentHistoryScreen } from './payment/PaymentHistoryScreen';
 
 interface StudentProfileScreenProps {
   onOpenAuthModal: () => void;
@@ -20,6 +21,11 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
   onOpenAuthModal,
 }) => {
   const { user, profile, role, switchDevRole, signOut } = useAuth();
+  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
+
+  if (showPaymentHistory) {
+    return <PaymentHistoryScreen onBack={() => setShowPaymentHistory(false)} />;
+  }
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -72,6 +78,23 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
           <Ionicons name="chevron-forward" size={18} color={THEME.colors.primary} />
         </TouchableOpacity>
 
+        {/* Switch to Admin Mode */}
+        <TouchableOpacity
+          style={[styles.switchBanner, { backgroundColor: '#1E293B', borderColor: '#334155' }]}
+          onPress={() => switchDevRole('admin')}
+        >
+          <View style={[styles.switchIconWrap, { backgroundColor: '#334155' }]}>
+            <Ionicons name="shield-checkmark" size={20} color="#38BDF8" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={[styles.switchTitle, { color: '#F8FAFC' }]}>Admin Control Panel</Text>
+            <Text style={[styles.switchSub, { color: '#94A3B8' }]}>
+              Verify owner documents, moderate listings, handle reports & manage Pune users.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#38BDF8" />
+        </TouchableOpacity>
+
         {/* Value Guarantee Info */}
         <View style={styles.sectionBox}>
           <Text style={styles.sectionHeader}>StayDirect Guarantee</Text>
@@ -99,7 +122,21 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
 
         {/* Account Controls */}
         <View style={styles.sectionBox}>
-          <Text style={styles.sectionHeader}>Account Settings</Text>
+          <Text style={styles.sectionHeader}>Account & Transactions</Text>
+
+          <TouchableOpacity
+            style={styles.actionItem}
+            onPress={() => setShowPaymentHistory(true)}
+          >
+            <Ionicons name="card-outline" size={20} color={THEME.colors.primary} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.actionItemText}>Payment & Deposit History</Text>
+              <Text style={{ fontSize: 11, color: THEME.colors.textSecondary }}>
+                Official receipts, refundable deposits & refund statuses
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
 
           {!user ? (
             <TouchableOpacity style={styles.actionItem} onPress={onOpenAuthModal}>

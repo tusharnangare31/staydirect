@@ -8,8 +8,11 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   role: UserRole;
+  isAdmin: boolean;
+  isSuspended: boolean;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInAsAdminDemo: () => Promise<void>;
   signUp: (
     email: string,
     password: string,
@@ -29,8 +32,11 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   role: 'student',
+  isAdmin: false,
+  isSuspended: false,
   isLoading: true,
   signIn: async () => ({ error: null }),
+  signInAsAdminDemo: async () => {},
   signUp: async () => ({ error: null }),
   signOut: async () => {},
   refreshProfile: async () => {},
@@ -43,6 +49,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<UserRole>('student');
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [isSuspended, setIsSuspended] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
@@ -53,9 +61,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('id', userId)
         .single();
 
+      // Check server-controlled admin access
+      let serverIsAdmin = false;
+      try {
+        const { data: adminRow } = await supabase
+          .from('admin_users')
+          .select('role')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (adminRow && (adminRow.role === 'admin' || adminRow.role === 'super_admin')) {
+          serverIsAdmin = true;
+        }
+      } catch (err) {
+        // Handled silently
+      }
+
+      // Check JWT custom claims as well
+      const userMeta = (session?.user?.app_metadata as any)?.role;
+      if (userMeta === 'admin' || userMeta === 'super_admin') {
+        serverIsAdmin = true;
+      }
+
       if (data && !error) {
-        setProfile(data as Profile);
-        setRole(data.role as UserRole);
+        const p = data as Profile;
+        setProfile(p);
+        setIsSuspended(!!p.is_suspended);
+        setIsAdmin(serverIsAdmin);
+        if (serverIsAdmin) {
+          setRole('admin');
+        } else {
+          setRole(p.role as UserRole);
+        }
       } else {
         // Fallback default profile
         setProfile({
@@ -64,9 +101,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           full_name: 'StayDirect Student',
           city: 'Pune',
           is_verified: true,
+          is_suspended: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
+        setIsSuspended(false);
+        setIsAdmin(serverIsAdmin);
       }
     } catch (e) {
       console.warn('Error fetching profile from Supabase:', e);
@@ -182,8 +222,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInAsAdminDemo = async () => {
+    // Authenticate / set verified demo admin profile matching seed admin
+    const adminId = '00000000-0000-0000-0000-000000000099';
+    setIsAdmin(true);
+    setIsSuspended(false);
+    setRole('admin');
+    setProfile({
+      id: adminId,
+      role: 'admin',
+      full_name: 'StayDirect Super Admin',
+      phone: '+919800000000',
+      city: 'Pune',
+      is_verified: true,
+      is_suspended: false,
+      college_or_company: 'StayDirect HQ Operations',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  };
+
   const switchDevRole = (newRole: UserRole) => {
     setRole(newRole);
+    if (newRole === 'admin') {
+      setIsAdmin(true);
+    }
     if (profile) {
       setProfile({ ...profile, role: newRole });
     }
@@ -196,8 +259,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         profile,
         role,
+        isAdmin,
+        isSuspended,
         isLoading,
         signIn,
+        signInAsAdminDemo,
         signUp,
         signOut,
         refreshProfile,

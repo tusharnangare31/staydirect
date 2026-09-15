@@ -16,6 +16,8 @@ import { THEME, PUNE_AREAS } from '../../src/constants/theme';
 import { useHostels } from '../../src/hooks/useHostels';
 import { HostelCard } from '../../components/hostels/HostelCard';
 import { Hostel } from '../../src/types/database.types';
+import { getRecentlyViewed } from '../../src/lib/recentlyViewed';
+import { StateFeedback } from '../../src/components/ui/StateFeedback';
 
 interface StudentHomeScreenProps {
   onSelectHostel?: (hostel: Hostel) => void;
@@ -32,6 +34,16 @@ export default function StudentHomeRoute(props: StudentHomeScreenProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const [currentCity, setCurrentCity] = useState('Pune');
+  const [recentHostels, setRecentHostels] = useState<Hostel[]>([]);
+
+  // Load recently viewed
+  React.useEffect(() => {
+    getRecentlyViewed().then((list) => {
+      if (list && list.length > 0) {
+        setRecentHostels(list);
+      }
+    });
+  }, [hostels]);
 
   // Filter logic
   const filteredHostels = useMemo(() => {
@@ -227,6 +239,42 @@ export default function StudentHomeRoute(props: StudentHomeScreenProps) {
           </ScrollView>
         </View>
 
+        {/* Recently Viewed Hostels Carousel */}
+        {recentHostels.length > 0 && (
+          <View style={{ marginBottom: 16 }}>
+            <View style={styles.sectionHeaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="time-outline" size={16} color={THEME.colors.primary} />
+                <Text style={styles.sectionTitle}>Recently Viewed</Text>
+              </View>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}
+            >
+              {recentHostels.map((h) => (
+                <TouchableOpacity
+                  key={'recent-' + h.id}
+                  style={styles.recentMiniCard}
+                  onPress={() => handleHostelPress(h)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.recentAreaTag}>
+                    <Text style={styles.recentAreaText}>{h.area}</Text>
+                  </View>
+                  <Text style={styles.recentName} numberOfLines={1}>
+                    {h.name}
+                  </Text>
+                  <Text style={styles.recentRent}>
+                    ₹{h.monthly_rent?.toLocaleString('en-IN')}/mo
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Recommended Hostels List */}
         <View style={styles.listingsHeader}>
           <View>
@@ -254,23 +302,16 @@ export default function StudentHomeRoute(props: StudentHomeScreenProps) {
             <Text style={styles.loadingText}>Fetching verified Pune hostels...</Text>
           </View>
         ) : filteredHostels.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="home-outline" size={44} color={THEME.colors.textMuted} />
-            <Text style={styles.emptyTitle}>No hostels found</Text>
-            <Text style={styles.emptySubtitle}>
-              Try changing your area or quick filter to view more student stays.
-            </Text>
-            <TouchableOpacity
-              style={styles.resetFiltersBtn}
-              onPress={() => {
-                setSelectedArea('All');
-                setSelectedQuickFilter('All');
-                setSearchQuery('');
-              }}
-            >
-              <Text style={styles.resetFiltersText}>Reset Filters</Text>
-            </TouchableOpacity>
-          </View>
+          <StateFeedback
+            type="no_results"
+            title="No Matching Hostels Found"
+            message={`No properties found in "${selectedArea}" with current filters. Reset filters to explore student stays across Pune.`}
+            onRetry={() => {
+              setSelectedArea('All');
+              setSelectedQuickFilter('All');
+              setSearchQuery('');
+            }}
+          />
         ) : (
           filteredHostels.map((hostel) => (
             <HostelCard
@@ -468,6 +509,43 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: THEME.colors.textSecondary,
     lineHeight: 14,
+  },
+  recentMiniCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 10,
+    width: 130,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  recentAreaTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginBottom: 6,
+  },
+  recentAreaText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  recentName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    marginBottom: 4,
+  },
+  recentRent: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: THEME.colors.primary,
   },
   sectionHeaderRow: {
     flexDirection: 'row',

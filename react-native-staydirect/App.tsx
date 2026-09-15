@@ -21,13 +21,25 @@ import HostelDetailRoute from './app/hostel/[id]';
 import { StudentBookingsScreen } from './src/screens/student/StudentBookingsScreen';
 import { StudentProfileScreen } from './src/screens/student/StudentProfileScreen';
 
-// Owner Routes (Phase 3)
+// Owner Routes (Phase 3 & 5)
 import { OwnerDashboardScreen } from './app/(owner)/index';
 import { OwnerListingsScreen } from './app/(owner)/listings';
 import { OwnerInquiriesScreen } from './app/(owner)/inquiries';
 import { OwnerProfileScreen } from './app/(owner)/profile';
 import { AddHostelScreen } from './app/(owner)/add-hostel';
 import { EditHostelScreen } from './app/(owner)/edit-hostel/[id]';
+import { OwnerVerificationScreen } from './app/(owner)/verification';
+
+// Admin Routes (Phase 5 & 6)
+import { AdminDashboardScreen } from './app/(admin)/index';
+import { AdminVerificationsScreen } from './app/(admin)/verifications';
+import { AdminVerificationDetailScreen } from './app/(admin)/verifications/[id]';
+import { AdminListingsScreen } from './app/(admin)/listings';
+import { AdminListingDetailScreen } from './app/(admin)/listings/[id]';
+import { AdminUsersScreen } from './app/(admin)/users';
+import { AdminReportsScreen } from './app/(admin)/reports';
+import { AdminPaymentsScreen } from './app/(admin)/payments';
+import { AdminSettingsScreen } from './app/(admin)/settings';
 
 import { AuthModal } from './src/components/AuthModal';
 import { Hostel } from './src/types/database.types';
@@ -36,6 +48,7 @@ const queryClient = new QueryClient();
 
 type StudentTab = 'home' | 'search' | 'saved' | 'bookings' | 'profile';
 type OwnerTab = 'dashboard' | 'listings' | 'inquiries' | 'profile';
+type AdminTab = 'dashboard' | 'verifications' | 'listings' | 'payments' | 'users' | 'reports' | 'settings';
 
 function MainAppNavigation() {
   const { role, switchDevRole } = useAuth();
@@ -48,15 +61,31 @@ function MainAppNavigation() {
     area: 'All',
   });
 
-  // Owner Navigation State (Phase 3)
+  // Owner Navigation State (Phase 3 & 5)
   const [ownerTab, setOwnerTab] = useState<OwnerTab>('dashboard');
   const [isAddingHostel, setIsAddingHostel] = useState<boolean>(false);
   const [editingHostelId, setEditingHostelId] = useState<string | null>(null);
+  const [isOwnerVerifying, setIsOwnerVerifying] = useState<boolean>(false);
+
+  // Admin Navigation State (Phase 5)
+  const [adminTab, setAdminTab] = useState<AdminTab>('dashboard');
+  const [selectedVerificationId, setSelectedVerificationId] = useState<string | null>(null);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
 
   const [isAuthModalVisible, setIsAuthModalVisible] = useState<boolean>(false);
 
-  // OWNER EXPERIENCE (Phase 3)
+  // OWNER EXPERIENCE (Phase 3 & 5)
   if (role === 'owner') {
+    // 0. Owner Verification Screen
+    if (isOwnerVerifying) {
+      return (
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar barStyle="light-content" backgroundColor={THEME.colors.primary} />
+          <OwnerVerificationScreen onBack={() => setIsOwnerVerifying(false)} />
+        </SafeAreaView>
+      );
+    }
+
     // 1. Add Hostel Screen
     if (isAddingHostel) {
       return (
@@ -115,6 +144,11 @@ function MainAppNavigation() {
               onSwitchToStudentView={() => {
                 switchDevRole('student');
                 setStudentTab('home');
+              }}
+              onNavigateToVerification={() => setIsOwnerVerifying(true)}
+              onSwitchToAdminView={() => {
+                switchDevRole('admin');
+                setAdminTab('dashboard');
               }}
             />
           )}
@@ -204,6 +238,216 @@ function MainAppNavigation() {
           visible={isAuthModalVisible}
           onClose={() => setIsAuthModalVisible(false)}
         />
+      </SafeAreaView>
+    );
+  }
+
+  // ADMIN EXPERIENCE (Phase 5)
+  if (role === 'admin') {
+    // 1. Verification Review Detail View
+    if (selectedVerificationId) {
+      return (
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0F172A' }]}>
+          <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+          <AdminVerificationDetailScreen
+            verificationId={selectedVerificationId}
+            onBack={() => setSelectedVerificationId(null)}
+            onActionComplete={() => setSelectedVerificationId(null)}
+          />
+        </SafeAreaView>
+      );
+    }
+
+    // 2. Listing Moderation Detail View
+    if (selectedListingId) {
+      return (
+        <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0F172A' }]}>
+          <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+          <AdminListingDetailScreen
+            hostelId={selectedListingId}
+            onBack={() => setSelectedListingId(null)}
+            onActionComplete={() => setSelectedListingId(null)}
+          />
+        </SafeAreaView>
+      );
+    }
+
+    // 3. 5-Tab Admin Navigation Experience
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0F172A' }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
+
+        {/* Content Area */}
+        <View style={styles.contentArea}>
+          {adminTab === 'dashboard' && (
+            <AdminDashboardScreen
+              onNavigateToVerifications={() => setAdminTab('verifications')}
+              onNavigateToListings={() => setAdminTab('listings')}
+              onNavigateToUsers={() => setAdminTab('users')}
+              onNavigateToReports={() => setAdminTab('reports')}
+              onNavigateToPayments={() => setAdminTab('payments')}
+              onNavigateToSettings={() => setAdminTab('settings')}
+              onSwitchToStudentView={() => {
+                switchDevRole('student');
+                setStudentTab('home');
+              }}
+              onSwitchToOwnerView={() => {
+                switchDevRole('owner');
+                setOwnerTab('dashboard');
+              }}
+            />
+          )}
+
+          {adminTab === 'verifications' && (
+            <AdminVerificationsScreen
+              onBack={() => setAdminTab('dashboard')}
+              onSelectVerification={(id) => setSelectedVerificationId(id)}
+            />
+          )}
+
+          {adminTab === 'listings' && (
+            <AdminListingsScreen
+              onBack={() => setAdminTab('dashboard')}
+              onSelectListing={(id) => setSelectedListingId(id)}
+            />
+          )}
+
+          {adminTab === 'payments' && (
+            <AdminPaymentsScreen onBack={() => setAdminTab('dashboard')} />
+          )}
+
+          {adminTab === 'users' && (
+            <AdminUsersScreen onBack={() => setAdminTab('dashboard')} />
+          )}
+
+          {adminTab === 'reports' && (
+            <AdminReportsScreen
+              onBack={() => setAdminTab('dashboard')}
+              onInspectHostel={(id) => setSelectedListingId(id)}
+            />
+          )}
+
+          {adminTab === 'settings' && (
+            <AdminSettingsScreen onBack={() => setAdminTab('dashboard')} />
+          )}
+        </View>
+
+        {/* 6 Bottom Navigation Tabs for Admin */}
+        <View style={[styles.bottomBar, { backgroundColor: '#0F172A', borderTopColor: '#1E293B' }]}>
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setAdminTab('dashboard')}
+          >
+            <Ionicons
+              name={adminTab === 'dashboard' ? 'speedometer' : 'speedometer-outline'}
+              size={19}
+              color={adminTab === 'dashboard' ? '#38BDF8' : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.navLabel,
+                { color: adminTab === 'dashboard' ? '#38BDF8' : '#64748B' },
+              ]}
+            >
+              Dashboard
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setAdminTab('verifications')}
+          >
+            <Ionicons
+              name={adminTab === 'verifications' ? 'shield-checkmark' : 'shield-checkmark-outline'}
+              size={19}
+              color={adminTab === 'verifications' ? '#38BDF8' : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.navLabel,
+                { color: adminTab === 'verifications' ? '#38BDF8' : '#64748B' },
+              ]}
+            >
+              Verify
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setAdminTab('listings')}
+          >
+            <Ionicons
+              name={adminTab === 'listings' ? 'business' : 'business-outline'}
+              size={19}
+              color={adminTab === 'listings' ? '#38BDF8' : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.navLabel,
+                { color: adminTab === 'listings' ? '#38BDF8' : '#64748B' },
+              ]}
+            >
+              Listings
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setAdminTab('payments')}
+          >
+            <Ionicons
+              name={adminTab === 'payments' ? 'wallet' : 'wallet-outline'}
+              size={19}
+              color={adminTab === 'payments' ? '#34D399' : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.navLabel,
+                { color: adminTab === 'payments' ? '#34D399' : '#64748B' },
+              ]}
+            >
+              Payments
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setAdminTab('users')}
+          >
+            <Ionicons
+              name={adminTab === 'users' ? 'people' : 'people-outline'}
+              size={19}
+              color={adminTab === 'users' ? '#38BDF8' : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.navLabel,
+                { color: adminTab === 'users' ? '#38BDF8' : '#64748B' },
+              ]}
+            >
+              Users
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setAdminTab('reports')}
+          >
+            <Ionicons
+              name={adminTab === 'reports' ? 'flag' : 'flag-outline'}
+              size={19}
+              color={adminTab === 'reports' ? '#EF4444' : '#64748B'}
+            />
+            <Text
+              style={[
+                styles.navLabel,
+                { color: adminTab === 'reports' ? '#EF4444' : '#64748B' },
+              ]}
+            >
+              Reports
+            </Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }

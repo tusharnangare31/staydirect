@@ -19,10 +19,14 @@ import { supabase } from '../../src/lib/supabase';
 
 export interface OwnerProfileScreenProps {
   onSwitchToStudentView?: () => void;
+  onNavigateToVerification?: () => void;
+  onSwitchToAdminView?: () => void;
 }
 
 export const OwnerProfileScreen: React.FC<OwnerProfileScreenProps> = ({
   onSwitchToStudentView,
+  onNavigateToVerification,
+  onSwitchToAdminView,
 }) => {
   const { user, profile, refreshProfile, signOut, switchDevRole } = useAuth();
 
@@ -177,6 +181,39 @@ export const OwnerProfileScreen: React.FC<OwnerProfileScreenProps> = ({
           <Text style={styles.infoLabel}>Account Role</Text>
           <Text style={styles.infoVal}>Hostel Property Partner</Text>
         </View>
+
+        {/* Verification Action Button */}
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: isVerified ? '#F0FDF4' : '#FFFBEB',
+            padding: 12,
+            borderRadius: 10,
+            marginTop: 12,
+            borderWidth: 1,
+            borderColor: isVerified ? '#BBF7D0' : '#FDE68A',
+            gap: 10,
+          }}
+          onPress={onNavigateToVerification}
+        >
+          <Ionicons
+            name={isVerified ? 'shield-checkmark' : 'id-card-outline'}
+            size={20}
+            color={isVerified ? '#16A34A' : '#D97706'}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: isVerified ? '#166534' : '#92400E' }}>
+              {isVerified ? 'Partner Verification Approved' : 'Submit Property Verification'}
+            </Text>
+            <Text style={{ fontSize: 11, color: isVerified ? '#15803D' : '#B45309', marginTop: 2 }}>
+              {isVerified
+                ? 'Your Pune listings show the official StayDirect Partner Badge.'
+                : 'Upload electricity bill or property tax receipt for admin review.'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={isVerified ? '#16A34A' : '#D97706'} />
+        </TouchableOpacity>
       </View>
 
       {/* Zero Brokerage Promise Banner */}
@@ -207,6 +244,25 @@ export const OwnerProfileScreen: React.FC<OwnerProfileScreenProps> = ({
             <Text style={styles.switchTitle}>Switch to Student Discovery Mode</Text>
             <Text style={styles.switchSub}>
               Browse Pune hostels from a student's perspective
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={THEME.colors.textMuted} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.switchRow, { borderTopWidth: 1, borderTopColor: '#F1F5F9', marginTop: 10, paddingTop: 10 }]}
+          onPress={() => {
+            switchDevRole('admin');
+            onSwitchToAdminView?.();
+          }}
+        >
+          <View style={[styles.switchIconBox, { backgroundColor: '#1E293B' }]}>
+            <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.switchTitle}>Switch to Admin Control Panel</Text>
+            <Text style={styles.switchSub}>
+              Review verifications, moderate listings, handle reports & users
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={THEME.colors.textMuted} />
