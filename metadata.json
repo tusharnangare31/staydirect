@@ -1,0 +1,7 @@
+{
+  "name": "StayDirect",
+  "description": "Find verified student hostels and PGs in Pune directly from owners with zero brokerage. Explore student hostels, direct inquiries, room tours, and owner management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

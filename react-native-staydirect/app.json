@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "StayDirect Pune",
+    "slug": "staydirect-pune",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#00362A",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.staydirect.pune"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#00362A"
+      },
+      "package": "com.staydirect.pune"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
