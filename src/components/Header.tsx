@@ -9,6 +9,9 @@ interface HeaderProps {
   onOpenNotifications: () => void;
   onOpenProfile: () => void;
   onOpenAppModal?: () => void;
+  onToggleMobileFrame?: () => void;
+  isMobileFrameActive?: boolean;
+  isEmbedded?: boolean;
   onBack?: () => void;
   showBack?: boolean;
 }
@@ -21,12 +24,21 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenNotifications,
   onOpenProfile,
   onOpenAppModal,
+  onToggleMobileFrame,
+  isMobileFrameActive = false,
+  isEmbedded = false,
   onBack,
   showBack = false,
 }) => {
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 bg-[#F9F9FF]/90 backdrop-blur-xl border-b border-[#E2E8F0]/70">
-      <div className="max-w-2xl mx-auto h-16 px-4 flex items-center justify-between gap-2">
+    <header
+      className={`${
+        isEmbedded
+          ? 'sticky top-0 left-0 right-0 z-30'
+          : 'fixed top-0 left-0 right-0 z-40'
+      } bg-[#F9F9FF]/95 backdrop-blur-xl border-b border-[#E2E8F0]/70`}
+    >
+      <div className="max-w-2xl mx-auto h-16 px-3 sm:px-4 flex items-center justify-between gap-2">
         {/* Left section: Back or Drawer + Brand */}
         <div className="flex items-center gap-2 min-w-0">
           {showBack && onBack ? (
@@ -78,6 +90,26 @@ export const Header: React.FC<HeaderProps> = ({
               {userRole === 'student' ? 'Student' : 'Owner'}
             </span>
           </button>
+
+          {/* Mobile App Simulator Toggle */}
+          {onToggleMobileFrame && (
+            <button
+              onClick={onToggleMobileFrame}
+              title={isMobileFrameActive ? 'Exit Phone Frame' : 'Preview in Phone Simulator'}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all active:scale-95 shadow-xs ${
+                isMobileFrameActive
+                  ? 'bg-[#00362A] text-white ring-2 ring-[#B4EFDA]'
+                  : 'bg-[#E8F5EE] border border-[#B4EFDA] text-[#006C49] hover:bg-[#B4EFDA]/50'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[15px]">
+                {isMobileFrameActive ? 'phone_iphone' : 'devices'}
+              </span>
+              <span className="hidden sm:inline">
+                {isMobileFrameActive ? 'Frame: ON' : '📱 Mobile App'}
+              </span>
+            </button>
+          )}
 
           {/* Location Badge */}
           <div className="hidden sm:flex items-center gap-1 bg-[#F0F3FF] px-2.5 py-1 rounded-full text-[#00362A] text-xs font-semibold">

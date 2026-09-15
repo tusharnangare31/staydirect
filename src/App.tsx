@@ -37,6 +37,7 @@ import { FilterModal } from './components/FilterModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { PWAInstallBar } from './components/PWAInstallBar';
 import { MobileAppModal } from './components/MobileAppModal';
+import { MobileDeviceSimulator } from './components/MobileDeviceSimulator';
 
 export default function App() {
   // Application State
@@ -44,7 +45,12 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('student-home');
   const [screenHistory, setScreenHistory] = useState<string[]>(['student-home']);
   const [isMobileAppModalOpen, setIsMobileAppModalOpen] = useState(false);
-  const [isMobileFrameActive, setIsMobileFrameActive] = useState(false);
+  const [isMobileFrameActive, setIsMobileFrameActive] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return false;
+  });
 
   // Data State
   const [hostels, setHostels] = useState<Hostel[]>(INITIAL_HOSTELS);
@@ -241,8 +247,12 @@ export default function App() {
 
   const savedHostelsList = hostels.filter((h) => savedHostelIds.has(h.id));
 
-  return (
-    <div className="min-h-screen bg-[#F8FAF9] text-[#111C2D] font-sans antialiased selection:bg-[#B4EFDA] selection:text-[#00362A]">
+  const appLayout = (
+    <div
+      className={`min-h-screen bg-[#F8FAF9] text-[#111C2D] font-sans antialiased selection:bg-[#B4EFDA] selection:text-[#00362A] flex flex-col ${
+        isMobileFrameActive ? 'w-full' : ''
+      }`}
+    >
       {/* Top Application Header (Hidden on standalone login/onboarding) */}
       {!isFullScreenView && (
         <Header
@@ -253,6 +263,9 @@ export default function App() {
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenProfile={() => navigateTo('profile')}
           onOpenAppModal={() => setIsMobileAppModalOpen(true)}
+          onToggleMobileFrame={() => setIsMobileFrameActive((prev) => !prev)}
+          isMobileFrameActive={isMobileFrameActive}
+          isEmbedded={isMobileFrameActive}
           onBack={handleBack}
           showBack={shouldShowBack}
         />
@@ -260,8 +273,12 @@ export default function App() {
 
       {/* Main Content Viewport */}
       <main
-        className={`max-w-2xl mx-auto px-4 ${
-          isFullScreenView ? 'pt-4' : 'pt-20'
+        className={`max-w-2xl mx-auto px-4 flex-1 w-full ${
+          isFullScreenView
+            ? 'pt-4'
+            : isMobileFrameActive
+            ? 'pt-3'
+            : 'pt-20'
         }`}
       >
         {currentScreen === 'student-home' && (
@@ -412,6 +429,7 @@ export default function App() {
           userRole={userRole}
           savedCount={savedHostelIds.size}
           unreadInquiriesCount={3}
+          isEmbedded={isMobileFrameActive}
         />
       )}
 
@@ -461,7 +479,9 @@ export default function App() {
       />
 
       {/* PWA Floating Install & Offline Alert Bar */}
-      <PWAInstallBar onOpenAppModal={() => setIsMobileAppModalOpen(true)} />
+      {!isMobileFrameActive && (
+        <PWAInstallBar onOpenAppModal={() => setIsMobileAppModalOpen(true)} />
+      )}
 
       {/* Mobile App Install & Native APK Modal */}
       <MobileAppModal
@@ -472,4 +492,21 @@ export default function App() {
       />
     </div>
   );
+
+  if (isMobileFrameActive) {
+    return (
+      <MobileDeviceSimulator
+        userRole={userRole}
+        onToggleRole={handleToggleRole}
+        currentScreen={currentScreen}
+        onNavigate={navigateTo}
+        onCloseSimulator={() => setIsMobileFrameActive(false)}
+        onOpenAppModal={() => setIsMobileAppModalOpen(true)}
+      >
+        {appLayout}
+      </MobileDeviceSimulator>
+    );
+  }
+
+  return appLayout;
 }

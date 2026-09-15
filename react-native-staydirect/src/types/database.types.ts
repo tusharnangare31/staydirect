@@ -8,6 +8,7 @@ export type Json =
 
 export type UserRole = 'student' | 'owner';
 export type GenderPreference = 'boys' | 'girls' | 'co-ed';
+export type HostelType = 'PG' | 'hostel' | 'co-living';
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
 export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'completed';
 export type InquiryStatus = 'new' | 'contacted' | 'scheduled_visit' | 'closed';
@@ -37,22 +38,25 @@ export interface Hostel {
   distance_to_college?: string | null;
   latitude: number;
   longitude: number;
-  monthly_rent_min: number;
-  monthly_rent_max: number;
+  monthly_rent?: number;
+  monthly_rent_min?: number;
+  monthly_rent_max?: number;
   security_deposit: number;
   gender_preference: GenderPreference;
-  is_available: boolean;
-  total_beds: number;
-  available_beds: number;
+  hostel_type?: HostelType;
+  is_available?: boolean;
+  is_published?: boolean;
+  total_beds?: number;
+  available_beds?: number;
   verification_status: VerificationStatus;
-  rating: number;
-  review_count: number;
+  rating?: number;
+  review_count?: number;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   // Joined fields
   images?: HostelImage[];
   rooms?: Room[];
-  amenities?: Amenity[];
+  amenities?: Amenity[] | { amenity?: { name: string }; name?: string }[];
   owner?: Profile;
   is_favorited?: boolean;
 }
@@ -60,23 +64,28 @@ export interface Hostel {
 export interface HostelImage {
   id: string;
   hostel_id: string;
-  image_url: string;
-  is_cover: boolean;
-  display_order: number;
-  created_at: string;
+  image_url?: string;
+  storage_path?: string;
+  is_cover?: boolean;
+  display_order?: number;
+  sort_order?: number;
+  created_at?: string;
 }
 
 export interface Room {
   id: string;
   hostel_id: string;
-  sharing_type: string;
+  sharing_type?: string;
+  room_type?: string;
   monthly_rent: number;
-  deposit: number;
-  total_capacity: number;
-  vacant_beds: number;
-  has_ac: boolean;
-  has_attached_washroom: boolean;
-  created_at: string;
+  deposit?: number;
+  total_capacity?: number;
+  vacant_beds?: number;
+  total_beds?: number;
+  available_beds?: number;
+  has_ac?: boolean;
+  has_attached_washroom?: boolean;
+  created_at?: string;
 }
 
 export interface Amenity {

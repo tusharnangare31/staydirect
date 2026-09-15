@@ -7,6 +7,7 @@ interface BottomNavProps {
   userRole: UserRole;
   savedCount: number;
   unreadInquiriesCount?: number;
+  isEmbedded?: boolean;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -15,11 +16,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   userRole,
   savedCount,
   unreadInquiriesCount = 3,
+  isEmbedded = false,
 }) => {
+  const containerClass = `${
+    isEmbedded
+      ? 'sticky bottom-0 left-0 right-0 z-30'
+      : 'fixed bottom-0 left-0 right-0 z-40'
+  } bg-white/95 backdrop-blur-xl border-t border-[#E2E8F0]/80 shadow-[0_-4px_16px_rgba(0,54,42,0.06)]`;
+
   if (userRole === 'student') {
     return (
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-[#E2E8F0]/80 shadow-[0_-4px_16px_rgba(0,54,42,0.06)]"
+        className={containerClass}
         aria-label="Bottom Navigation"
       >
         <div className="max-w-md mx-auto flex justify-around items-center h-16 px-4">
@@ -117,7 +125,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   // Owner Bottom Nav
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-[#E2E8F0]/80 shadow-[0_-4px_16px_rgba(0,54,42,0.06)]"
+      className={containerClass}
       aria-label="Owner Bottom Navigation"
     >
       <div className="max-w-md mx-auto flex justify-around items-center h-16 px-4">
