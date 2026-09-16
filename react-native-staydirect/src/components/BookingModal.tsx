@@ -97,12 +97,13 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={onClose}
+      >
       <View style={styles.overlay}>
         <View style={styles.container}>
           {/* Header */}
