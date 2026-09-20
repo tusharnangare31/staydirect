@@ -194,17 +194,72 @@ export const StudentHomeView: React.FC<StudentHomeViewProps> = ({
   }, [hostels]);
 
   return (
-    <div className="w-full flex flex-col space-y-9 pb-24 pt-2 animate-fadeIn">
+    <div className="w-full flex flex-col space-y-7 pb-24 pt-1 animate-fadeIn">
+      {/* Home Page Brand Welcome Header with Custom Logo */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+        <div className="flex items-center gap-3.5">
+          {/* Custom Logo */}
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden shadow-sm border border-[#00362A]/20 bg-[#00362A] shrink-0 hover:scale-105 transition-transform">
+            <img
+              src="/icon.svg"
+              alt="StayDirect Custom Logo"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xl sm:text-2xl font-black text-[#111C2D] tracking-tight">
+                Stay<span className="text-[#173B2C]">Direct</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-[10px] font-extrabold border border-[#B8CEAA] tracking-wider uppercase">
+                ₹0 Brokerage
+              </span>
+            </div>
+            <p className="text-xs text-[#5C6470] font-medium mt-0.5">
+              Pune&apos;s verified student hostels & PGs direct from owners
+            </p>
+          </div>
+        </div>
+
+        {/* Quick action buttons */}
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          {onOpenSavedModal && (
+            <button
+              onClick={onOpenSavedModal}
+              className="relative px-3 py-2 rounded-xl bg-white hover:bg-[#F1EFE6] text-[#111C2D] border border-[#E5E3D8] text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+              aria-label="Saved Hostels"
+            >
+              <span className="material-symbols-outlined text-[18px] text-[#15803D]">bookmark</span>
+              <span>Shortlist</span>
+              {savedHostelIds.size > 0 && (
+                <span className="ml-1 w-4 h-4 rounded-full bg-[#15803D] text-white text-[10px] font-black flex items-center justify-center">
+                  {savedHostelIds.size}
+                </span>
+              )}
+            </button>
+          )}
+
+          <button
+            onClick={() => onNavigateToSearch()}
+            className="px-3 py-2 rounded-xl bg-[#173B2C] hover:bg-[#24523F] text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs active:scale-95 cursor-pointer"
+            aria-label="Explore Pune Hostels"
+          >
+            <span className="material-symbols-outlined text-[16px]">travel_explore</span>
+            <span>Explore All</span>
+          </button>
+        </div>
+      </div>
+
       {/* 1. React Native Style Top Trigger Search & Location Bar */}
       <section className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-[#E5E3D8] shadow-xs space-y-3.5">
         {/* Top Location & Actions Row */}
         <div className="flex items-center justify-between gap-3">
           <button
             onClick={onOpenLocationDrawer}
-            className="flex items-center gap-2 text-left group hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2.5 text-left group hover:opacity-80 transition-opacity cursor-pointer"
             aria-label="Change Pune locality"
           >
-            <div className="w-9 h-9 rounded-full bg-[#E8F5EE] text-[#173B2C] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#E8F5EE] text-[#173B2C] flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[20px]">location_on</span>
             </div>
             <div>
@@ -224,28 +279,13 @@ export const StudentHomeView: React.FC<StudentHomeViewProps> = ({
 
           {/* Quick Action Badges */}
           <div className="flex items-center gap-2">
-            {onOpenSavedModal && (
-              <button
-                onClick={onOpenSavedModal}
-                className="relative w-9 h-9 rounded-full bg-[#F1EFE6] hover:bg-[#E5E3D8] text-[#111C2D] flex items-center justify-center transition-colors"
-                aria-label="Saved Hostels"
-              >
-                <span className="material-symbols-outlined text-[20px]">favorite</span>
-                {savedHostelIds.size > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
-                    {savedHostelIds.size}
-                  </span>
-                )}
-              </button>
-            )}
-
             <button
               onClick={() => onNavigateToSearch()}
-              className="w-9 h-9 rounded-full bg-[#173B2C] hover:bg-[#24523F] text-white flex items-center justify-center transition-colors shadow-xs"
-              aria-label="AI Recommendations"
-              title="Personalized Recommendations"
+              className="px-3 py-1.5 rounded-full bg-[#F1EFE6] hover:bg-[#E5E3D8] text-[#173B2C] text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              title="Filter by Verified Owners"
             >
-              <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
+              <span className="material-symbols-outlined text-[16px]">verified</span>
+              <span className="hidden sm:inline">Owner Direct</span>
             </button>
           </div>
         </div>
@@ -273,7 +313,7 @@ export const StudentHomeView: React.FC<StudentHomeViewProps> = ({
               e.stopPropagation();
               onOpenFilter();
             }}
-            className="flex items-center gap-1 text-xs font-bold text-[#173B2C] hover:text-[#0D231A] pl-1"
+            className="flex items-center gap-1 text-xs font-bold text-[#173B2C] hover:text-[#0D231A] pl-1 cursor-pointer"
           >
             <span className="material-symbols-outlined text-[18px]">tune</span>
             <span className="hidden sm:inline">Filters</span>
@@ -281,30 +321,39 @@ export const StudentHomeView: React.FC<StudentHomeViewProps> = ({
         </div>
       </section>
 
-      {/* 2. Zero Brokerage Direct Owner Trust Banner */}
+      {/* 2. Zero Brokerage Direct Owner Trust Banner with Custom Logo */}
       <section className="w-full bg-[#173B2C] text-white rounded-2xl p-4 sm:p-6 shadow-md relative overflow-hidden">
         {/* Subtle decorative circles */}
         <div className="absolute -right-12 -bottom-12 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
         <div className="absolute right-24 -top-8 w-28 h-28 rounded-full bg-emerald-400/10 pointer-events-none" />
 
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5 max-w-xl">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#0F766E] text-white text-[11px] font-extrabold tracking-wider uppercase">
-              <span className="material-symbols-outlined text-[14px]">verified</span>
-              ₹0 BROKERAGE GUARANTEE
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-md bg-[#00362A] p-0.5 shrink-0 border border-emerald-400/30 hidden sm:block">
+              <img
+                src="/icon.svg"
+                alt="StayDirect Seal"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
-              Direct Owner Bookings Only
-            </h2>
-            <p className="text-xs sm:text-sm text-[#DDE9D5] font-medium leading-relaxed">
-              No agents, no commission. Connect directly with verified Pune owners and save ₹15,000+ on security and middleman cuts.
-            </p>
+            <div className="space-y-1.5 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#0F766E] text-white text-[11px] font-extrabold tracking-wider uppercase">
+                <span className="material-symbols-outlined text-[14px]">verified</span>
+                ₹0 BROKERAGE GUARANTEE
+              </div>
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
+                Direct Owner Bookings Only
+              </h2>
+              <p className="text-xs sm:text-sm text-[#DDE9D5] font-medium leading-relaxed">
+                No agents, no commission. Connect directly with verified Pune owners and save ₹15,000+ on security and middleman cuts.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => onNavigateToSearch('', 'verified')}
-              className="px-4 py-2.5 rounded-xl bg-white text-[#173B2C] hover:bg-[#F8F7F1] font-bold text-xs sm:text-sm transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-xl bg-white text-[#173B2C] hover:bg-[#F8F7F1] font-bold text-xs sm:text-sm transition-all shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer"
             >
               <span>View Verified Hostels</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>

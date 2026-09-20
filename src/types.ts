@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'owner';
+export type UserRole = 'student' | 'owner' | 'guest';
 
 export type RoomOccupancy = {
   type: string;
@@ -79,13 +79,15 @@ export interface ChatMessage {
 }
 
 export interface UserProfile {
+  id: string;
   name: string;
   email: string;
-  role: UserRole;
+  role: 'student' | 'owner';
   avatarUrl: string;
   savedCount: number;
   inquiriesCount: number;
   city: string;
   college?: string;
   phone?: string;
+  propertyBusinessName?: string;
 }

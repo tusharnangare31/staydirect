@@ -73,8 +73,12 @@ export const MobileDeviceSimulator: React.FC<MobileDeviceSimulatorProps> = ({
       >
         {/* Left: Brand Identity & Window Style Indicator */}
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00362A] to-[#006C49] flex items-center justify-center text-white shadow-md">
-            <span className="material-symbols-outlined text-[18px]">home_pin</span>
+          <div className="w-8 h-8 rounded-xl overflow-hidden shadow-md border border-emerald-500/30 bg-[#00362A] shrink-0">
+            <img
+              src="/icon.svg"
+              alt="StayDirect Logo"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <div className="flex items-center gap-2">

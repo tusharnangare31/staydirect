@@ -1,5 +1,5 @@
 import React from 'react';
-import { Hostel } from '../types';
+import { Hostel, UserProfile } from '../types';
 import { HostelCard } from './HostelCard';
 
 interface SavedHostelsViewProps {
@@ -7,6 +7,8 @@ interface SavedHostelsViewProps {
   onSelectHostel: (hostel: Hostel) => void;
   onRemoveSave: (id: string) => void;
   onNavigateToSearch: () => void;
+  currentUser?: UserProfile | null;
+  onOpenAuth?: (role?: 'student' | 'owner', context?: string) => void;
 }
 
 export const SavedHostelsView: React.FC<SavedHostelsViewProps> = ({
@@ -14,13 +16,62 @@ export const SavedHostelsView: React.FC<SavedHostelsViewProps> = ({
   onSelectHostel,
   onRemoveSave,
   onNavigateToSearch,
+  currentUser,
+  onOpenAuth,
 }) => {
+  // If guest visitor:
+  if (!currentUser) {
+    return (
+      <div className="w-full pb-28 space-y-6 animate-fadeIn">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-[#111C2D] tracking-tight">
+              Saved Hostels & Shortlist
+            </h1>
+            <p className="text-xs sm:text-sm text-[#5C6470] mt-0.5">
+              Personalized accommodation shortlist
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white border border-[#E5E3D8] rounded-3xl p-8 sm:p-12 text-center shadow-xs flex flex-col items-center max-w-md mx-auto my-8">
+          <div className="w-16 h-16 rounded-2xl bg-[#DCFCE7] text-[#15803D] flex items-center justify-center mb-4 shadow-sm">
+            <span className="material-symbols-outlined text-[34px]">bookmark_add</span>
+          </div>
+          <h3 className="text-lg font-black text-[#111C2D]">Sign In to View Your Shortlist</h3>
+          <p className="text-xs sm:text-sm text-[#5C6470] max-w-xs mt-1.5 leading-relaxed">
+            Your saved hostels and direct comparisons are linked to your verified student account.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-2.5 w-full mt-6">
+            <button
+              type="button"
+              onClick={() => onOpenAuth?.('student', 'Sign in to access your saved hostels and direct owner messaging.')}
+              className="flex-1 py-3 bg-[#173B2C] hover:bg-[#24523F] text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+            >
+              Sign In as Student
+            </button>
+            <button
+              type="button"
+              onClick={onNavigateToSearch}
+              className="flex-1 py-3 bg-[#F1EFE6] hover:bg-[#E5E3D8] text-[#173B2C] rounded-xl text-xs sm:text-sm font-bold transition-all active:scale-95 cursor-pointer"
+            >
+              Explore Hostels
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full pb-28 space-y-6 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-[#111C2D] tracking-tight">Saved Hostels & PGs</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-[#111C2D] tracking-tight">
+            Saved Hostels & PGs
+          </h1>
           <p className="text-xs sm:text-sm text-[#5C6470] mt-0.5">
             Your shortlisted student accommodations in Pune
           </p>

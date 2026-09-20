@@ -476,24 +476,27 @@ export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
 ];
 
 export const DEFAULT_STUDENT_PROFILE: UserProfile = {
+  id: 'student-rahul',
   name: 'Rahul Sharma',
-  email: 'rahul@gmail.com',
+  email: 'rahul.sharma@mitwpu.edu',
   role: 'student',
   avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAfNAcCSE6On4K34OgPbjMNCMeU22coQrVYAt6jkdEVO0yJHzIQo85UWHa1SXz3mOiATqytjLhjDBlCIR-9o7G-m7zEfXfdOSGDJMQD_iH1MdAtmkq4v_BqdwA2ucy6QSjUky8GieDdS6gqbSgZ-gUs20WmgoQwkOMThq6TCnwp4k3B8-DQIBLG5FMjcSLken2FJ5oQQY9JgvIXmFu9KTOOf0SmLgwCOcR0SDYekeIErD-wJtEHSUem',
-  savedCount: 6,
-  inquiriesCount: 3,
+  savedCount: 2,
+  inquiriesCount: 1,
   city: 'Pune',
-  college: 'Symbiosis International University, Pune',
+  college: 'MIT World Peace University, Kothrud',
   phone: '+91 98220 12345',
 };
 
 export const DEFAULT_OWNER_PROFILE: UserProfile = {
+  id: 'owner-sunil',
   name: 'Sunil Patil',
   email: 'sunil.patil@staydirect.in',
   role: 'owner',
   avatarUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAj1abmB_TLl-6V4esxg59a5Sm05EY8FMdub-GK5NX9kQc7cCNCKccdRsOvXI6NVVLq1SB_EkiJzP-auKu0nOr6auciBKMzKiqxL6WNeyUh_vKkC8Mn3ZOPk7zIQsu1Qya4un-bVJNxW0vPdyyY4DB9G0Y_LNOWKYVlmRzUSPEDrrHmysDgmQ-P0QDCOfTvXQhwJSoRQAMc2Xd-xBvPyVE1RbGmusBHGeYNlNmMEluDhbjF3jm-bTgq',
   savedCount: 0,
-  inquiriesCount: 24,
+  inquiriesCount: 4,
   city: 'Pune',
   phone: '+91 98234 00129',
+  propertyBusinessName: 'Sunrise PG & Hostels Group',
 };

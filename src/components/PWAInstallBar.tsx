@@ -23,9 +23,12 @@ export const PWAInstallBar: React.FC<PWAInstallBarProps> = ({ onOpenAppModal }) 
         </div>
       )}
 
-      {/* Floating PWA Install Bar */}
+      {/* Floating Desktop PWA / Native APK Install Prompt - Hidden on mobile to prevent overlapping bottom nav & cards */}
       {!isInstalled && !dismissed && (
-        <div className="fixed bottom-20 sm:bottom-6 left-3 right-3 sm:left-auto sm:right-4 sm:w-96 z-30 bg-white/95 backdrop-blur-md border border-[#B8CEAA] rounded-2xl p-3 shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300">
+        <aside
+          aria-label="Install StayDirect application"
+          className="hidden sm:flex fixed bottom-6 right-6 z-30 w-96 bg-white/95 backdrop-blur-md border border-[#B8CEAA] rounded-2xl p-3 shadow-xl items-center justify-between gap-3 animate-in slide-in-from-bottom duration-300"
+        >
           {/* App Icon + Info */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-[#173B2C] text-[#DCFCE7] flex items-center justify-center shrink-0 shadow-xs">
@@ -47,7 +50,7 @@ export const PWAInstallBar: React.FC<PWAInstallBarProps> = ({ onOpenAppModal }) 
               <button
                 type="button"
                 onClick={() => install()}
-                className="px-3 py-1.5 rounded-xl bg-[#173B2C] hover:bg-[#24523F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl bg-[#173B2C] hover:bg-[#24523F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[14px]">download</span>
                 <span>Install</span>
@@ -56,10 +59,10 @@ export const PWAInstallBar: React.FC<PWAInstallBarProps> = ({ onOpenAppModal }) 
               <button
                 type="button"
                 onClick={onOpenAppModal}
-                className="px-3 py-1.5 rounded-xl bg-[#173B2C] hover:bg-[#24523F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl bg-[#173B2C] hover:bg-[#24523F] text-white text-xs font-bold shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[14px]">smartphone</span>
-                <span>Get App</span>
+                <span>Get APK</span>
               </button>
             )}
 
@@ -67,12 +70,12 @@ export const PWAInstallBar: React.FC<PWAInstallBarProps> = ({ onOpenAppModal }) 
               type="button"
               onClick={() => setDismissed(true)}
               aria-label="Dismiss install banner"
-              className="w-7 h-7 rounded-lg text-[#64748B] hover:bg-[#F0F3FF] flex items-center justify-center transition-colors"
+              className="w-7 h-7 rounded-lg text-[#64748B] hover:bg-[#F0F3FF] flex items-center justify-center transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">close</span>
             </button>
           </div>
-        </div>
+        </aside>
       )}
     </>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Hostel } from '../types';
+import { Hostel, UserProfile } from '../types';
 
 interface HostelDetailsModalProps {
   hostel: Hostel | null;
@@ -8,6 +8,9 @@ interface HostelDetailsModalProps {
   onToggleSave: (id: string) => void;
   onOpenDirectChat: (hostel: Hostel) => void;
   onOpenMap: (area: string) => void;
+  currentUser?: UserProfile | null;
+  onOpenAuth?: (role?: 'student' | 'owner', context?: string) => void;
+  onBookVisitInquiry?: (hostel: Hostel, slot: string, roomType: string) => void;
 }
 
 export const HostelDetailsModal: React.FC<HostelDetailsModalProps> = ({
@@ -17,6 +20,9 @@ export const HostelDetailsModal: React.FC<HostelDetailsModalProps> = ({
   onToggleSave,
   onOpenDirectChat,
   onOpenMap,
+  currentUser,
+  onOpenAuth,
+  onBookVisitInquiry,
 }) => {
   const [selectedOccupancyIndex, setSelectedOccupancyIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -52,13 +58,43 @@ export const HostelDetailsModal: React.FC<HostelDetailsModalProps> = ({
     }
   };
 
+  const handleSaveClick = () => {
+    if (!currentUser) {
+      onOpenAuth?.('student', 'Sign in as a student to save this hostel to your shortlist.');
+      return;
+    }
+    onToggleSave(hostel.id);
+  };
+
+  const handleCallClick = () => {
+    if (!currentUser) {
+      onOpenAuth?.('student', 'Sign in as a student to view direct owner contact & verify 0% brokerage.');
+      return;
+    }
+    setShowCallAlert(true);
+  };
+
+  const handleBookVisitClick = () => {
+    if (!currentUser) {
+      onOpenAuth?.('student', 'Sign in as a student to schedule an in-person room tour with the owner.');
+      return;
+    }
+    if (currentUser.role === 'owner') {
+      alert('You are currently signed in as a Hostel Owner. Please sign in as a student to book student room tours.');
+      return;
+    }
+    setShowBookVisitModal(true);
+  };
+
   const handleConfirmVisit = () => {
     setVisitConfirmed(true);
+    const roomType = hostel.occupancies[selectedOccupancyIndex]?.type || 'Sharing';
+    onBookVisitInquiry?.(hostel, visitDate, roomType);
     setTimeout(() => {
       setVisitConfirmed(false);
       setShowBookVisitModal(false);
       onOpenDirectChat(hostel);
-    }, 1200);
+    }, 1000);
   };
 
   return (
@@ -97,7 +133,7 @@ export const HostelDetailsModal: React.FC<HostelDetailsModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => onToggleSave(hostel.id)}
+                onClick={handleSaveClick}
                 aria-label="Save to favorites"
                 className={`w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-md transition-transform active:scale-95 ${
                   isSaved ? 'text-[#BA1A1A]' : 'text-[#707975]'
@@ -352,8 +388,8 @@ export const HostelDetailsModal: React.FC<HostelDetailsModalProps> = ({
             {/* Call Button */}
             <button
               type="button"
-              onClick={() => setShowCallAlert(true)}
-              className="flex-1 h-12 rounded-xl bg-white text-[#173B2C] font-bold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-95 transition-transform border-2 border-[#173B2C]"
+              onClick={handleCallClick}
+              className="flex-1 h-12 rounded-xl bg-white text-[#173B2C] font-bold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-95 transition-transform border-2 border-[#173B2C] cursor-pointer"
             >
               <span className="material-symbols-outlined text-[20px]">call</span>
               <span>Call</span>
@@ -362,8 +398,8 @@ export const HostelDetailsModal: React.FC<HostelDetailsModalProps> = ({
             {/* Book Visit / Chat Button */}
             <button
               type="button"
-              onClick={() => setShowBookVisitModal(true)}
-              className="flex-[1.4] h-12 rounded-xl bg-[#173B2C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-[#24523F] active:scale-95 transition-transform"
+              onClick={handleBookVisitClick}
+              className="flex-[1.4] h-12 rounded-xl bg-[#173B2C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-[#24523F] active:scale-95 transition-transform cursor-pointer"
             >
               <span className="material-symbols-outlined text-[20px]">chat</span>
               <span>Book Visit</span>

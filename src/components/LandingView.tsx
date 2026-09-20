@@ -76,8 +76,8 @@ export const LandingView: React.FC<LandingViewProps> = ({ onGetStarted, onLogin 
           <div className="absolute inset-0 bg-gradient-to-tr from-[#B4EFDA]/40 to-[#DEE8FF]/50 rounded-3xl -rotate-2" />
           <div className="relative z-10 w-full h-full bg-white/80 backdrop-blur-xs border border-[#E2E8F0] rounded-3xl p-4 flex flex-col items-center justify-center shadow-md">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-2xl bg-[#00362A] text-white flex items-center justify-center shadow-md">
-                <span className="material-symbols-outlined text-[28px]">domain</span>
+              <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-md border border-[#00362A]/20 bg-[#00362A] shrink-0">
+                <img src="/icon.svg" alt="StayDirect Custom Logo" className="w-full h-full object-cover" />
               </div>
               <div className="w-10 h-10 rounded-xl bg-[#6CF8BB] text-[#00362A] flex items-center justify-center shadow-xs">
                 <span className="material-symbols-outlined text-[22px]">school</span>

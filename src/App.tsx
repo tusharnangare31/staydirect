@@ -40,10 +40,16 @@ import { MobileAppModal } from './components/MobileAppModal';
 import { MobileDeviceSimulator } from './components/MobileDeviceSimulator';
 import { LocationDrawer } from './components/LocationDrawer';
 import { Footer } from './components/Footer';
+import { AuthModal } from './components/AuthModal';
 
 export default function App() {
-  // Application State
-  const [userRole, setUserRole] = useState<UserRole>('student');
+  // Current user state: null represents a Guest visitor
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  // Derived user role: 'guest' | 'student' | 'owner'
+  const userRole: UserRole = currentUser ? currentUser.role : 'guest';
+
+  // Navigation & Screen State
   const [currentScreen, setCurrentScreen] = useState<string>('student-home');
   const [screenHistory, setScreenHistory] = useState<string[]>(['student-home']);
   const [isMobileAppModalOpen, setIsMobileAppModalOpen] = useState(false);
@@ -54,14 +60,10 @@ export default function App() {
   // Data State
   const [hostels, setHostels] = useState<Hostel[]>(INITIAL_HOSTELS);
   const [areas] = useState(INITIAL_AREAS);
-  const [inquiries] = useState<Inquiry[]>(INITIAL_INQUIRIES);
-  const [savedHostelIds, setSavedHostelIds] = useState<Set<string>>(
-    new Set(['sunrise-pg', 'city-stay-pg'])
-  );
-  const [studentProfile, setStudentProfile] = useState<UserProfile>(DEFAULT_STUDENT_PROFILE);
-  const [ownerProfile] = useState<UserProfile>(DEFAULT_OWNER_PROFILE);
+  const [inquiries, setInquiries] = useState<Inquiry[]>(INITIAL_INQUIRIES);
+  const [savedHostelIds, setSavedHostelIds] = useState<Set<string>>(new Set(['sunrise-pg']));
 
-  // Active Selected Items
+  // Active Selection
   const [selectedHostel, setSelectedHostel] = useState<Hostel | null>(null);
   const [chatHostel, setChatHostel] = useState<Hostel | undefined>(INITIAL_HOSTELS[0]);
   const [chatRecipientName, setChatRecipientName] = useState('Sunil Patil');
@@ -70,13 +72,78 @@ export default function App() {
   const [searchInitialCategory, setSearchInitialCategory] = useState('all');
   const [activeMapArea, setActiveMapArea] = useState('Hinjewadi');
 
-  // Modal Visibility
+  // Modals
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  // Navigation Helper
+  // Auth Modal State
+  const [authModalConfig, setAuthModalConfig] = useState<{
+    isOpen: boolean;
+    role: 'student' | 'owner';
+    contextMessage?: string;
+    initialMode: 'login' | 'register';
+  }>({
+    isOpen: false,
+    role: 'student',
+    initialMode: 'login',
+  });
+
+  const handleOpenAuth = (
+    role: 'student' | 'owner' = 'student',
+    contextMessage?: string,
+    initialMode: 'login' | 'register' = 'login'
+  ) => {
+    setAuthModalConfig({
+      isOpen: true,
+      role,
+      contextMessage,
+      initialMode,
+    });
+  };
+
+  const handleCloseAuth = () => {
+    setAuthModalConfig((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleAuthSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    if (user.role === 'student') {
+      navigateTo('student-home');
+    } else {
+      navigateTo('owner-home');
+    }
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    navigateTo('student-home');
+  };
+
+  // Role-gated Navigation Helper
   const navigateTo = (screen: string) => {
+    // Check if route is restricted to Owners
+    const isOwnerRoute = ['owner-home', 'owner-listings', 'owner-inquiries', 'add-hostel'].includes(
+      screen
+    );
+
+    if (isOwnerRoute) {
+      if (!currentUser) {
+        handleOpenAuth(
+          'owner',
+          'Sign in as a verified hostel owner to access the Owner Management Portal.'
+        );
+        return;
+      }
+      if (currentUser.role === 'student') {
+        handleOpenAuth(
+          'owner',
+          'You are currently signed in as a student. Sign in with your owner account to manage properties.'
+        );
+        return;
+      }
+    }
+
     setScreenHistory((prev) => [...prev, screen]);
     setCurrentScreen(screen);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -90,21 +157,29 @@ export default function App() {
       setScreenHistory(nextHistory);
       setCurrentScreen(previousScreen);
     } else {
-      navigateTo(userRole === 'student' ? 'student-home' : 'owner-home');
+      navigateTo(userRole === 'owner' ? 'owner-home' : 'student-home');
     }
   };
 
   const handleToggleRole = () => {
-    const nextRole: UserRole = userRole === 'student' ? 'owner' : 'student';
-    setUserRole(nextRole);
-    if (nextRole === 'owner') {
+    if (!currentUser) {
+      handleOpenAuth('student', 'Sign in to access personalized student or owner features.');
+      return;
+    }
+    if (currentUser.role === 'student') {
+      setCurrentUser(DEFAULT_OWNER_PROFILE);
       navigateTo('owner-home');
     } else {
+      setCurrentUser(DEFAULT_STUDENT_PROFILE);
       navigateTo('student-home');
     }
   };
 
   const handleToggleSave = (id: string) => {
+    if (!currentUser) {
+      handleOpenAuth('student', 'Sign in as a student to save hostels to your favorites shortlist.');
+      return;
+    }
     setSavedHostelIds((prev) => {
       const updated = new Set(prev);
       if (updated.has(id)) {
@@ -128,6 +203,32 @@ export default function App() {
     setChatRecipientName(inq.studentName);
     setChatRecipientRole(`Student • Interested in ${inq.hostelName}`);
     navigateTo('chat');
+  };
+
+  // Student booked visit inquiry handler
+  const handleBookVisitInquiry = (hostel: Hostel, slot: string, roomType: string) => {
+    const studentName = currentUser?.name || 'Rahul Sharma';
+    const studentInitials = studentName
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+
+    const newInquiry: Inquiry = {
+      id: `inq-${Date.now()}`,
+      hostelId: hostel.id,
+      hostelName: hostel.name,
+      studentName,
+      studentInitials,
+      roomPreference: roomType,
+      timeAgo: 'Just now',
+      status: 'SCHEDULED',
+      preferredMoveIn: slot,
+      lastMessage: `Physical room tour booked for ${slot} (${roomType}).`,
+      unread: true,
+    };
+    setInquiries((prev) => [newInquiry, ...prev]);
   };
 
   // Map Launcher
@@ -170,16 +271,26 @@ export default function App() {
       instantVisit: true,
       isActive: true,
       owner: {
-        id: 'owner-me',
-        name: ownerProfile.name,
-        phone: ownerProfile.phone,
-        avatarUrl: ownerProfile.avatarUrl,
+        id: currentUser?.id || 'owner-me',
+        name: currentUser?.name || DEFAULT_OWNER_PROFILE.name,
+        phone: currentUser?.phone || DEFAULT_OWNER_PROFILE.phone,
+        avatarUrl: currentUser?.avatarUrl || DEFAULT_OWNER_PROFILE.avatarUrl,
         responseTime: 'Responds in ~5 mins',
         tagline: 'Pune Native • Direct Verified Owner',
       },
       occupancies: [
-        { type: 'Single Room', price: (newHostelData.monthlyRent || 8000) + 2000, left: 2, details: 'Attached Bath & Balcony' },
-        { type: 'Twin Sharing', price: newHostelData.monthlyRent || 8000, left: 4, details: 'Spacious with Wardrobe' },
+        {
+          type: 'Single Room',
+          price: (newHostelData.monthlyRent || 8000) + 2000,
+          left: 2,
+          details: 'Attached Bath & Balcony',
+        },
+        {
+          type: 'Twin Sharing',
+          price: newHostelData.monthlyRent || 8000,
+          left: 4,
+          details: 'Spacious with Wardrobe',
+        },
       ],
       policies: ['Gate closes at 10:30 PM', 'Strictly non-smoking', '1 month refundable deposit'],
     };
@@ -187,7 +298,7 @@ export default function App() {
     setHostels((prev) => [newHostel, ...prev]);
     setTimeout(() => {
       navigateTo('owner-listings');
-    }, 800);
+    }, 600);
   };
 
   const handleToggleHostelActive = (id: string) => {
@@ -200,7 +311,7 @@ export default function App() {
   const getScreenTitle = () => {
     switch (currentScreen) {
       case 'student-home':
-        return 'Home Feed';
+        return 'Pune Hostels';
       case 'owner-home':
         return 'Owner Hub';
       case 'search':
@@ -208,7 +319,7 @@ export default function App() {
       case 'saved':
         return 'Saved Hostels';
       case 'profile':
-        return 'My Profile';
+        return currentUser ? 'My Profile' : 'Guest Account';
       case 'owner-listings':
         return 'My Listings';
       case 'owner-inquiries':
@@ -216,38 +327,27 @@ export default function App() {
       case 'add-hostel':
         return 'Add Hostel';
       case 'chat':
-        return 'Chat Direct';
+        return 'Direct Chat';
       case 'about':
         return 'About StayDirect';
       case 'help':
         return 'Help & Support';
       case 'map':
-        return 'Pune Map Explorer';
-      case 'login':
-        return 'Log In';
-      case 'register':
-        return 'Create Account';
-      case 'landing':
-        return 'Welcome to StayDirect';
+        return 'Explore Map';
       default:
         return 'StayDirect';
     }
   };
 
-  const isFullScreenView =
-    currentScreen === 'landing' ||
-    currentScreen === 'login' ||
-    currentScreen === 'register';
-
   const hideBottomNav =
-    isFullScreenView ||
-    currentScreen === 'chat' ||
-    currentScreen === 'map';
+    ['login', 'register', 'landing', 'chat', 'add-hostel'].includes(currentScreen);
 
   const shouldShowBack =
+    screenHistory.length > 1 &&
     currentScreen !== 'student-home' &&
-    currentScreen !== 'owner-home' &&
-    currentScreen !== 'landing';
+    currentScreen !== 'owner-home';
+
+  const isFullScreenView = currentScreen === 'login' || currentScreen === 'register';
 
   const savedHostelsList = hostels.filter((h) => savedHostelIds.has(h.id));
 
@@ -257,11 +357,13 @@ export default function App() {
         isMobileFrameActive ? 'w-full' : ''
       }`}
     >
-      {/* Top Application Header (Hidden on standalone login/onboarding) */}
+      {/* Top Application Header */}
       {!isFullScreenView && (
         <Header
           title={getScreenTitle()}
+          currentUser={currentUser}
           userRole={userRole}
+          onOpenAuth={handleOpenAuth}
           onToggleRole={handleToggleRole}
           onOpenDrawer={() => setIsDrawerOpen(true)}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
@@ -283,7 +385,7 @@ export default function App() {
             : isMobileFrameActive
             ? 'pt-3'
             : 'pt-4 sm:pt-6'
-        } ${!hideBottomNav && !isMobileFrameActive ? 'pb-20 md:pb-6' : 'pb-6'}`}
+        } ${!hideBottomNav && !isMobileFrameActive ? 'pb-24 md:pb-8' : 'pb-8'}`}
       >
         {currentScreen === 'student-home' && (
           <StudentHomeView
@@ -324,17 +426,24 @@ export default function App() {
             onSelectHostel={(h) => setSelectedHostel(h)}
             onRemoveSave={handleToggleSave}
             onNavigateToSearch={() => navigateTo('search')}
+            currentUser={currentUser}
+            onOpenAuth={handleOpenAuth}
           />
         )}
 
         {currentScreen === 'profile' && (
           <StudentProfileView
-            profile={userRole === 'student' ? studentProfile : ownerProfile}
+            currentUser={currentUser}
             savedCount={savedHostelIds.size}
-            userRole={userRole}
-            onToggleRole={handleToggleRole}
+            inquiriesCount={inquiries.length}
+            onOpenAuth={handleOpenAuth}
             onNavigateTo={navigateTo}
-            onLogout={() => navigateTo('login')}
+            onLogout={handleLogout}
+            onUpdateProfile={(updated) => {
+              if (currentUser) {
+                setCurrentUser({ ...currentUser, ...updated });
+              }
+            }}
           />
         )}
 
@@ -378,15 +487,14 @@ export default function App() {
         {currentScreen === 'landing' && (
           <LandingView
             onGetStarted={() => navigateTo('student-home')}
-            onLogin={() => navigateTo('login')}
+            onLogin={() => handleOpenAuth('student', 'Sign in to access your student or owner account.')}
           />
         )}
 
         {currentScreen === 'login' && (
           <LoginView
-            onLogin={(_, role) => {
-              setUserRole(role);
-              navigateTo(role === 'student' ? 'student-home' : 'owner-home');
+            onLogin={(user) => {
+              handleAuthSuccess(user);
             }}
             onNavigateToRegister={() => navigateTo('register')}
             onContinueAsGuest={() => navigateTo('student-home')}
@@ -395,16 +503,11 @@ export default function App() {
 
         {currentScreen === 'register' && (
           <RegisterView
-            onRegister={(name, email, role) => {
-              setUserRole(role);
-              if (role === 'student') {
-                setStudentProfile((p) => ({ ...p, name, email }));
-                navigateTo('student-home');
-              } else {
-                navigateTo('owner-home');
-              }
+            onRegister={(user) => {
+              handleAuthSuccess(user);
             }}
             onNavigateToLogin={() => navigateTo('login')}
+            onContinueAsGuest={() => navigateTo('student-home')}
           />
         )}
 
@@ -414,6 +517,8 @@ export default function App() {
             recipientName={chatRecipientName}
             recipientRole={chatRecipientRole}
             onBack={handleBack}
+            currentUser={currentUser}
+            onOpenAuth={handleOpenAuth}
           />
         )}
 
@@ -431,30 +536,35 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating Bottom Navigation Bar */}
+      {/* Floating Role-Aware Bottom Navigation Bar */}
       {!hideBottomNav && (
         <BottomNav
           currentScreen={currentScreen}
           onNavigate={navigateTo}
+          currentUser={currentUser}
           userRole={userRole}
+          onOpenAuth={handleOpenAuth}
           savedCount={savedHostelIds.size}
-          unreadInquiriesCount={3}
+          unreadInquiriesCount={inquiries.length}
           isEmbedded={isMobileFrameActive}
         />
       )}
 
-      {/* Side Navigation Drawer (Screen 10) */}
+      {/* Side Navigation Drawer */}
       <NavigationDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         activeScreen={currentScreen}
         onNavigate={navigateTo}
+        currentUser={currentUser}
         userRole={userRole}
+        onOpenAuth={handleOpenAuth}
         onToggleRole={handleToggleRole}
+        onLogout={handleLogout}
         onOpenAppModal={() => setIsMobileAppModalOpen(true)}
       />
 
-      {/* Hostel Details View Modal (Screen 8) */}
+      {/* Hostel Details Modal */}
       {selectedHostel && (
         <HostelDetailsModal
           hostel={selectedHostel}
@@ -469,6 +579,9 @@ export default function App() {
             setSelectedHostel(null);
             handleOpenMap(area);
           }}
+          currentUser={currentUser}
+          onOpenAuth={handleOpenAuth}
+          onBookVisitInquiry={handleBookVisitInquiry}
         />
       )}
 
@@ -488,7 +601,17 @@ export default function App() {
         onClose={() => setIsNotificationsOpen(false)}
       />
 
-      {/* Swiggy Footer */}
+      {/* Global Unified Auth Modal (Sign in / Register for Student or Owner) */}
+      <AuthModal
+        isOpen={authModalConfig.isOpen}
+        onClose={handleCloseAuth}
+        onSuccess={handleAuthSuccess}
+        initialRole={authModalConfig.role}
+        contextMessage={authModalConfig.contextMessage}
+        initialMode={authModalConfig.initialMode}
+      />
+
+      {/* Footer */}
       {!isFullScreenView && (
         <Footer
           onNavigate={navigateTo}
@@ -499,7 +622,7 @@ export default function App() {
         />
       )}
 
-      {/* Swiggy Location Drawer */}
+      {/* Location Drawer */}
       <LocationDrawer
         isOpen={isLocationDrawerOpen}
         onClose={() => setIsLocationDrawerOpen(false)}

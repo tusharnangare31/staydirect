@@ -76,12 +76,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onSelectArea }) => {
           {/* Col 1: Brand & Identity */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#00362A] to-[#006C49] flex items-center justify-center text-white shadow-md">
-                <span className="material-symbols-outlined text-[24px]">home_pin</span>
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md border border-white/20 shrink-0">
+                <img
+                  src="/icon.svg"
+                  alt="StayDirect Logo"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="flex flex-col">
                 <span className="text-2xl font-black text-white tracking-tight">
-                  Stay<span className="text-[#006C49]">Direct</span>
+                  Stay<span className="text-[#6CF8BB]">Direct</span>
                 </span>
                 <span className="text-[11px] font-semibold text-gray-400 tracking-wider uppercase -mt-1">
                   Pune Student Housing Network

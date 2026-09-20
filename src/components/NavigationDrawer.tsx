@@ -1,14 +1,17 @@
 import React from 'react';
-import { UserRole } from '../types';
+import { UserProfile } from '../types';
 
 interface NavigationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   activeScreen: string;
   onNavigate: (screen: string) => void;
-  userRole: UserRole;
-  onToggleRole: () => void;
+  currentUser: UserProfile | null;
+  onOpenAuth: (role?: 'student' | 'owner', context?: string) => void;
+  onLogout: () => void;
   onOpenAppModal?: () => void;
+  savedCount?: number;
+  unreadInquiriesCount?: number;
 }
 
 export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
@@ -16,9 +19,12 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
   onClose,
   activeScreen,
   onNavigate,
-  userRole,
-  onToggleRole,
+  currentUser,
+  onOpenAuth,
+  onLogout,
   onOpenAppModal,
+  savedCount = 0,
+  unreadInquiriesCount = 0,
 }) => {
   if (!isOpen) return null;
 
@@ -27,34 +33,43 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
     onClose();
   };
 
+  const isGuest = !currentUser;
+  const isStudent = currentUser?.role === 'student';
+  const isOwner = currentUser?.role === 'owner';
+
   return (
     <div className="fixed inset-0 z-50 flex">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-[#111C2D]/40 backdrop-blur-[2px] transition-opacity duration-300"
+        className="fixed inset-0 bg-[#111C2D]/50 backdrop-blur-xs transition-opacity duration-300"
         onClick={onClose}
       />
 
       {/* Drawer Container */}
       <aside
-        className="relative w-[85%] max-w-[340px] bg-white h-full shadow-2xl flex flex-col justify-between pt-7 pb-6 px-6 rounded-r-[32px] z-10 overflow-hidden animate-in slide-in-from-left duration-300"
+        className="relative w-[85%] max-w-[340px] bg-white h-full shadow-2xl flex flex-col justify-between pt-6 pb-6 px-5 rounded-r-[28px] z-10 overflow-hidden animate-in slide-in-from-left duration-300 border-r border-[#E5E3D8]"
         role="dialog"
         aria-label="Navigation drawer"
       >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Header */}
-          <div className="flex items-start justify-between pb-5 border-b border-[#F0F3FF]">
+          <div className="flex items-start justify-between pb-4 border-b border-[#E5E3D8]">
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-[#124E3F] flex items-center justify-center shadow-md text-white">
-                  <span className="material-symbols-outlined text-[19px]">home</span>
+                <div className="w-8 h-8 rounded-xl overflow-hidden shadow-xs border border-[#00362A]/20 shrink-0">
+                  <img
+                    src="/icon.svg"
+                    alt="StayDirect Logo"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <span className="text-2xl font-extrabold tracking-tight text-[#124E3F]">
-                  Stay<span className="text-[#006C49]">Direct</span>
+                <span className="text-xl font-black tracking-tight text-[#111C2D]">
+                  Stay<span className="text-[#173B2C]">Direct</span>
                 </span>
               </div>
-              <p className="text-[12px] font-semibold text-[#64748B] mt-1 pl-0.5 tracking-tight">
-                Find Your Home. No Brokerage.
+              <p className="text-[11px] font-bold text-[#15803D] mt-1 pl-0.5 tracking-tight flex items-center gap-1">
+                <span className="material-symbols-outlined text-[13px]">verified</span>
+                <span>Zero Brokerage • Pune Hostels & PGs</span>
               </p>
             </div>
 
@@ -62,164 +77,265 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             <button
               onClick={onClose}
               aria-label="Close Menu"
-              className="p-1.5 text-[#64748B] hover:text-[#111C2D] hover:bg-[#F0F3FF] active:scale-95 rounded-full transition-all"
+              className="p-1.5 text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F1EFE6] active:scale-95 rounded-xl transition-all cursor-pointer"
             >
-              <span className="material-symbols-outlined text-[22px]">close</span>
+              <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
 
-          {/* Quick Role Switch Banner inside Drawer */}
-          <div className="mt-3 p-2.5 rounded-xl bg-[#F0F3FF] border border-[#D8E3FB] flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="material-symbols-outlined text-[#006C49] text-[20px]">
-                {userRole === 'student' ? 'school' : 'domain'}
-              </span>
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-[#111C2D] truncate">
-                  {userRole === 'student' ? 'Student View' : 'Hostel Owner View'}
-                </span>
-                <span className="text-[10px] text-[#404945]">
-                  {userRole === 'student' ? 'Searching hostels in Pune' : 'Managing your properties'}
-                </span>
+          {/* User Account / Identity Card */}
+          <div className="mt-4 p-3 rounded-2xl bg-[#F8F7F1] border border-[#E5E3D8]">
+            {isGuest ? (
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-[#E5E3D8] text-[#5C6470] flex items-center justify-center font-bold">
+                    <span className="material-symbols-outlined text-[20px]">person_outline</span>
+                  </div>
+                  <div>
+                    <span className="block text-xs font-black text-[#111C2D]">Guest Visitor</span>
+                    <span className="block text-[10px] text-[#5C6470]">Browsing Pune hostels</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenAuth('student', 'Sign in as a student to shortlist hostels, chat with owners & schedule visits.');
+                    }}
+                    className="py-1.5 px-2 rounded-xl bg-[#173B2C] hover:bg-[#24523F] text-white text-xs font-bold text-center transition-all cursor-pointer"
+                  >
+                    Student Login
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenAuth('owner', 'Sign in as a hostel owner to list rooms and manage inquiries with zero brokerage.');
+                    }}
+                    className="py-1.5 px-2 rounded-xl bg-white border border-[#B8CEAA] hover:bg-[#DCFCE7] text-[#15803D] text-xs font-bold text-center transition-all cursor-pointer"
+                  >
+                    Owner Login
+                  </button>
+                </div>
               </div>
-            </div>
-            <button
-              onClick={onToggleRole}
-              className="text-xs font-bold text-[#006C49] bg-white px-2.5 py-1 rounded-lg shadow-xs hover:bg-[#B4EFDA]/40 transition-colors shrink-0"
-            >
-              Switch
-            </button>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                      isStudent
+                        ? 'bg-[#DCFCE7] text-[#15803D] ring-1 ring-[#B8CEAA]'
+                        : 'bg-[#173B2C] text-white'
+                    }`}
+                  >
+                    {isStudent ? (
+                      currentUser.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .substring(0, 2)
+                        .toUpperCase()
+                    ) : (
+                      <span className="material-symbols-outlined text-[18px]">domain</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="block text-xs font-black text-[#111C2D] truncate">
+                      {currentUser.name}
+                    </span>
+                    <span className="block text-[10px] text-[#5C6470] truncate">
+                      {isStudent
+                        ? currentUser.college || 'Student'
+                        : currentUser.propertyBusinessName || 'Hostel Owner'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onLogout();
+                  }}
+                  title="Sign Out"
+                  className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                  aria-label="Sign out"
+                >
+                  <span className="material-symbols-outlined text-[18px]">logout</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto no-scrollbar py-3 space-y-1">
+            {/* 1. Universal / Student Home */}
             <button
-              onClick={() => handleNav(userRole === 'student' ? 'student-home' : 'owner-home')}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
+              onClick={() => handleNav(isOwner ? 'owner-home' : 'student-home')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeScreen === 'student-home' || activeScreen === 'owner-home'
-                  ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                  : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
+                  ? 'bg-[#DCFCE7] text-[#15803D]'
+                  : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
               }`}
             >
-              <span className="material-symbols-outlined text-[21px]">home</span>
-              <span>Home</span>
+              <span className="material-symbols-outlined text-[20px]">
+                {isOwner ? 'dashboard' : 'explore'}
+              </span>
+              <span>{isOwner ? 'Owner Dashboard' : 'Explore Hostels'}</span>
             </button>
 
+            {/* Search */}
             <button
               onClick={() => handleNav('search')}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeScreen === 'search'
-                  ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                  : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
+                  ? 'bg-[#DCFCE7] text-[#15803D]'
+                  : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
               }`}
             >
-              <span className="material-symbols-outlined text-[21px]">search</span>
-              <span>Search Hostels</span>
+              <span className="material-symbols-outlined text-[20px]">search</span>
+              <span>Search Hostels & PGs</span>
             </button>
 
-            {userRole === 'owner' && (
+            {/* Pune Map */}
+            <button
+              onClick={() => handleNav('map')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeScreen === 'map'
+                  ? 'bg-[#DCFCE7] text-[#15803D]'
+                  : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">map</span>
+              <span>Pune Locality Map</span>
+            </button>
+
+            {/* OWNER EXCLUSIVE LINKS */}
+            {isOwner && (
               <>
+                <div className="pt-2 pb-1 px-3.5 text-[10px] font-extrabold uppercase tracking-wider text-[#8E95A2]">
+                  Hostel Management
+                </div>
+
                 <button
                   onClick={() => handleNav('owner-listings')}
-                  className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeScreen === 'owner-listings'
-                      ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                      : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
+                      ? 'bg-[#DCFCE7] text-[#15803D]'
+                      : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[21px]">apartment</span>
-                  <span>My Listings</span>
+                  <span className="material-symbols-outlined text-[20px]">apartment</span>
+                  <span>My Hostel Listings</span>
                 </button>
 
                 <button
                   onClick={() => handleNav('add-hostel')}
-                  className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeScreen === 'add-hostel'
-                      ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                      : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
+                      ? 'bg-[#DCFCE7] text-[#15803D]'
+                      : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[21px]">add_circle</span>
-                  <span>Add New Hostel</span>
+                  <span className="material-symbols-outlined text-[20px]">add_circle</span>
+                  <span>Add New Listing</span>
                 </button>
 
                 <button
                   onClick={() => handleNav('owner-inquiries')}
-                  className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeScreen === 'owner-inquiries'
-                      ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                      : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
+                      ? 'bg-[#DCFCE7] text-[#15803D]'
+                      : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[21px]">forum</span>
-                  <span>Inquiries</span>
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[20px]">forum</span>
+                    <span>Student Inquiries</span>
+                  </div>
+                  {unreadInquiriesCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black">
+                      {unreadInquiriesCount} new
+                    </span>
+                  )}
                 </button>
               </>
             )}
 
-            <button
-              onClick={() => handleNav('saved')}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
-                activeScreen === 'saved'
-                  ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                  : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[21px]">favorite</span>
-              <span>Saved Hostels</span>
-            </button>
+            {/* STUDENT & GUEST LINKS */}
+            {!isOwner && (
+              <>
+                <button
+                  onClick={() => handleNav('saved')}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    activeScreen === 'saved'
+                      ? 'bg-[#DCFCE7] text-[#15803D]'
+                      : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-[20px]">favorite</span>
+                    <span>Saved Shortlist</span>
+                  </div>
+                  {savedCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-[#173B2C] text-white text-[9px] font-black">
+                      {savedCount}
+                    </span>
+                  )}
+                </button>
 
-            <button
-              onClick={() => handleNav('chat')}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
-                activeScreen === 'chat'
-                  ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                  : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
-              }`}
-            >
-              <div className="flex items-center gap-3.5">
-                <span className="material-symbols-outlined text-[21px]">chat</span>
-                <span>Messages / Chat</span>
-              </div>
-              <span className="text-xs bg-[#E8F5EE] text-[#006C49] px-2 py-0.5 rounded-full font-bold">
-                Online
-              </span>
-            </button>
+                {isStudent && (
+                  <button
+                    onClick={() => handleNav('chat')}
+                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeScreen === 'chat'
+                        ? 'bg-[#DCFCE7] text-[#15803D]'
+                        : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">chat</span>
+                    <span>Messages & Visits</span>
+                  </button>
+                )}
+              </>
+            )}
 
+            {/* Profile */}
             <button
               onClick={() => handleNav('profile')}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeScreen === 'profile'
-                  ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                  : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
+                  ? 'bg-[#DCFCE7] text-[#15803D]'
+                  : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
               }`}
             >
-              <span className="material-symbols-outlined text-[21px]">person</span>
-              <span>Profile</span>
-            </button>
-
-            <button
-              onClick={() => handleNav('help')}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
-                activeScreen === 'help'
-                  ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                  : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[21px]">help</span>
-              <span>Help & Support</span>
+              <span className="material-symbols-outlined text-[20px]">person</span>
+              <span>{isOwner ? 'Owner Settings' : isStudent ? 'Student Profile' : 'Guest Preferences'}</span>
             </button>
 
             <button
               onClick={() => handleNav('about')}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all ${
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeScreen === 'about'
-                  ? 'bg-[#E8F5EE] text-[#124E3F] font-bold'
-                  : 'text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9]'
+                  ? 'bg-[#DCFCE7] text-[#15803D]'
+                  : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
               }`}
             >
-              <span className="material-symbols-outlined text-[21px]">info</span>
-              <span>About StayDirect</span>
+              <span className="material-symbols-outlined text-[20px]">verified</span>
+              <span>Zero Brokerage Guarantee</span>
+            </button>
+
+            <button
+              onClick={() => handleNav('help')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeScreen === 'help'
+                  ? 'bg-[#DCFCE7] text-[#15803D]'
+                  : 'text-[#5C6470] hover:text-[#111C2D] hover:bg-[#F8F7F1]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">support_agent</span>
+              <span>Help & Support</span>
             </button>
 
             {onOpenAppModal && (
@@ -228,39 +344,31 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                   onClose();
                   onOpenAppModal();
                 }}
-                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-[14px] font-bold text-[#00362A] bg-[#E8F5EE] hover:bg-[#B4EFDA]/50 transition-all border border-[#B4EFDA] my-1 shadow-xs"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold text-[#15803D] bg-[#DCFCE7]/60 hover:bg-[#DCFCE7] transition-all border border-[#B8CEAA] my-1 cursor-pointer"
               >
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-[20px] text-[#006C49]">smartphone</span>
-                  <span>Install Mobile App</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[18px]">smartphone</span>
+                  <span>Install App / APK</span>
                 </div>
-                <span className="text-[10px] bg-[#00362A] text-white px-2 py-0.5 rounded-md font-bold">
-                  PWA / APK
+                <span className="text-[10px] bg-[#173B2C] text-white px-1.5 py-0.2 rounded-md font-bold">
+                  Free
                 </span>
               </button>
             )}
-
-            <button
-              onClick={() => handleNav('landing')}
-              className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl text-[15px] font-semibold text-[#475569] hover:text-[#124E3F] hover:bg-[#F8FAF9] transition-all"
-            >
-              <span className="material-symbols-outlined text-[21px]">explore</span>
-              <span>Onboarding Intro</span>
-            </button>
           </nav>
         </div>
 
         {/* Drawer Footer */}
-        <div className="pt-3 border-t border-[#F0F3FF] flex flex-col space-y-2 shrink-0">
-          <div className="flex items-center gap-2 text-[#475569] px-1 text-sm font-medium">
-            <span className="material-symbols-outlined text-[#006C49] text-[18px]">location_on</span>
-            <span>Pune, Maharashtra</span>
+        <div className="pt-3 border-t border-[#E5E3D8] flex flex-col space-y-2 shrink-0">
+          <div className="flex items-center gap-2 text-[#5C6470] text-xs font-bold">
+            <span className="material-symbols-outlined text-[#173B2C] text-[16px]">location_on</span>
+            <span>Pune, Maharashtra • 0% Brokerage</span>
           </div>
-          <div className="flex items-center justify-between px-1 text-xs text-[#94A3B8] font-medium">
-            <span>v1.0.0</span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#006C49] bg-[#E8F5EE] px-2 py-0.5 rounded-md">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse"></span>
-              Verified Platform
+          <div className="flex items-center justify-between text-[11px] text-[#8E95A2]">
+            <span>StayDirect v2.0 Production</span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#15803D] bg-[#DCFCE7] px-2 py-0.5 rounded-md border border-[#B8CEAA]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#15803D] animate-pulse"></span>
+              Verified
             </span>
           </div>
         </div>

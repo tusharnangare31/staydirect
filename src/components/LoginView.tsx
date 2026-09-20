@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { UserRole } from '../types';
+import { UserProfile, UserRole } from '../types';
+import { DEFAULT_STUDENT_PROFILE, DEFAULT_OWNER_PROFILE } from '../data/mockData';
 
 interface LoginViewProps {
-  onLogin: (email: string, role: UserRole) => void;
+  onLogin: (user: UserProfile) => void;
   onNavigateToRegister: () => void;
   onContinueAsGuest: () => void;
 }
@@ -12,52 +13,116 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onNavigateToRegister,
   onContinueAsGuest,
 }) => {
-  const [email, setEmail] = useState('student@pune.ac.in');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('rahul.sharma@mitwpu.edu');
+  const [password, setPassword] = useState('pune1234');
   const [showPassword, setShowPassword] = useState(false);
-  const [role, setRole] = useState<UserRole>('student');
+  const [role, setRole] = useState<'student' | 'owner'>('student');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRoleChange = (newRole: 'student' | 'owner') => {
+    setRole(newRole);
+    if (newRole === 'student') {
+      setEmail('rahul.sharma@mitwpu.edu');
+    } else {
+      setEmail('sunil.patil@staydirect.in');
+    }
+  };
+
+  const handleQuickDemo = (demoRole: 'student' | 'owner') => {
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      onLogin(email, role);
+      if (demoRole === 'student') {
+        onLogin(DEFAULT_STUDENT_PROFILE);
+      } else {
+        onLogin(DEFAULT_OWNER_PROFILE);
+      }
+    }, 400);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!email || !email.includes('@')) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      if (role === 'student' && email.toLowerCase().includes('rahul')) {
+        onLogin(DEFAULT_STUDENT_PROFILE);
+      } else if (role === 'owner' && email.toLowerCase().includes('sunil')) {
+        onLogin(DEFAULT_OWNER_PROFILE);
+      } else {
+        // Custom credentials
+        const user: UserProfile = {
+          id: `user-${Date.now()}`,
+          name: role === 'student' ? 'Pune Student' : 'Pune Property Owner',
+          email: email.trim().toLowerCase(),
+          role: role,
+          avatarUrl:
+            role === 'student'
+              ? DEFAULT_STUDENT_PROFILE.avatarUrl
+              : DEFAULT_OWNER_PROFILE.avatarUrl,
+          savedCount: 0,
+          inquiriesCount: 0,
+          city: 'Pune',
+          college: role === 'student' ? 'Pune University' : undefined,
+          phone: '+91 98220 XXXXX',
+          propertyBusinessName: role === 'owner' ? 'Direct Pune Hostels' : undefined,
+        };
+        onLogin(user);
+      }
     }, 600);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[85vh] px-4 py-6 w-full max-w-sm mx-auto">
+    <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 py-8 w-full max-w-md mx-auto">
       {/* Brand Emblem */}
       <div className="flex flex-col items-center text-center mb-6">
-        <div className="w-14 h-14 rounded-2xl bg-[#00362A] text-white flex items-center justify-center shadow-lg mb-3">
-          <span className="material-symbols-outlined text-[32px]">home</span>
+        <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-md mb-3 border border-[#00362A]/20 bg-[#00362A]">
+          <img
+            src="/icon.svg"
+            alt="StayDirect Logo"
+            className="w-full h-full object-cover"
+          />
         </div>
-        <h1 className="text-2xl font-black text-[#00362A] tracking-tight">
-          Stay<span className="text-[#006C49]">Direct</span>
+        <h1 className="text-2xl font-black text-[#111C2D] tracking-tight">
+          Stay<span className="text-[#173B2C]">Direct</span>
         </h1>
-        <p className="text-xs font-semibold text-[#64748B] mt-1">
-          Zero Brokerage Hostels & PGs in Pune
+        <p className="text-xs font-bold text-[#15803D] mt-1 flex items-center gap-1">
+          <span className="material-symbols-outlined text-[15px]">verified</span>
+          <span>Zero Brokerage • Direct Student & Owner Platform</span>
         </p>
       </div>
 
       {/* Login Card */}
-      <div className="w-full bg-white border border-[#E2E8F0] rounded-3xl p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-[#111C2D] text-center mb-1">Welcome Back</h2>
-        <p className="text-xs text-[#707975] text-center mb-5">
-          Sign in to access your saved hostels & inquiries
-        </p>
+      <div className="w-full bg-white border border-[#E5E3D8] rounded-3xl p-6 sm:p-7 shadow-xl">
+        <div className="text-center mb-4">
+          <h2 className="text-lg font-black text-[#111C2D]">Sign In</h2>
+          <p className="text-xs text-[#5C6470] mt-0.5">
+            Select your account type to access role-specific features
+          </p>
+        </div>
 
         {/* Role Selector Pill */}
-        <div className="flex bg-[#F0F3FF] p-1 rounded-xl mb-4 border border-[#D8E3FB]">
+        <div className="flex bg-[#F1EFE6] p-1 rounded-xl mb-4 border border-[#E5E3D8]">
           <button
             type="button"
-            onClick={() => setRole('student')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            onClick={() => handleRoleChange('student')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               role === 'student'
-                ? 'bg-white text-[#00362A] shadow-xs'
-                : 'text-[#64748B] hover:text-[#111C2D]'
+                ? 'bg-white text-[#173B2C] shadow-xs'
+                : 'text-[#5C6470] hover:text-[#111C2D]'
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">school</span>
@@ -65,11 +130,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => setRole('owner')}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            onClick={() => handleRoleChange('owner')}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               role === 'owner'
-                ? 'bg-white text-[#00362A] shadow-xs'
-                : 'text-[#64748B] hover:text-[#111C2D]'
+                ? 'bg-white text-[#173B2C] shadow-xs'
+                : 'text-[#5C6470] hover:text-[#111C2D]'
             }`}
           >
             <span className="material-symbols-outlined text-[16px]">domain</span>
@@ -77,14 +142,61 @@ export const LoginView: React.FC<LoginViewProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        {/* 1-Click Demo Evaluation Box */}
+        <div className="mb-4 bg-[#F8F7F1] p-3 rounded-2xl border border-[#E5E3D8]">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#173B2C] flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">bolt</span>
+              Instant 1-Click Evaluation:
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleQuickDemo('student')}
+              disabled={isSubmitting}
+              className="p-2 rounded-xl bg-white border border-[#B8CEAA] hover:bg-[#DCFCE7] text-[#173B2C] text-xs font-bold flex flex-col items-center justify-center shadow-2xs transition-all cursor-pointer"
+            >
+              <span className="font-extrabold">Rahul Sharma</span>
+              <span className="text-[10px] text-[#5C6470]">Student (MIT-WPU)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickDemo('owner')}
+              disabled={isSubmitting}
+              className="p-2 rounded-xl bg-white border border-[#173B2C] hover:bg-[#173B2C] hover:text-white text-[#173B2C] text-xs font-bold flex flex-col items-center justify-center shadow-2xs transition-all cursor-pointer group"
+            >
+              <span className="font-extrabold">Sunil Patil</span>
+              <span className="text-[10px] text-[#5C6470] group-hover:text-white/80">Owner (Sunrise PG)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="relative mb-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-[#E5E3D8]" />
+          </div>
+          <div className="relative flex justify-center text-[10px] uppercase">
+            <span className="bg-white px-2 font-bold text-[#8E95A2]">Or Enter Credentials</span>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-3 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] shrink-0">error</span>
+            <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* Email */}
           <div className="flex flex-col gap-1">
             <label className="text-xs font-bold text-[#111C2D]" htmlFor="login-email">
               Email Address
             </label>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-[#707975] text-[18px]">
+              <span className="material-symbols-outlined absolute left-3 text-[#8E95A2] text-[18px]">
                 mail
               </span>
               <input
@@ -93,7 +205,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-11 pl-9 pr-3 bg-[#F0F3FF] border border-[#E2E8F0] rounded-xl text-xs text-[#111C2D] focus:outline-none focus:bg-white focus:border-[#006C49]"
+                className="w-full h-10 pl-9 pr-3 bg-[#F8F7F1] border border-[#E5E3D8] rounded-xl text-xs text-[#111C2D] focus:outline-none focus:bg-white focus:border-[#173B2C]"
                 placeholder="you@example.com"
               />
             </div>
@@ -107,14 +219,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </label>
               <button
                 type="button"
-                onClick={() => alert('Password reset link sent to your registered email.')}
-                className="text-[11px] text-[#006C49] font-bold hover:underline"
+                onClick={() => alert('Password reset verification link sent to your email.')}
+                className="text-[11px] text-[#15803D] font-bold hover:underline cursor-pointer"
               >
                 Forgot?
               </button>
             </div>
             <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-3 text-[#707975] text-[18px]">
+              <span className="material-symbols-outlined absolute left-3 text-[#8E95A2] text-[18px]">
                 lock
               </span>
               <input
@@ -123,13 +235,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full h-11 pl-9 pr-10 bg-[#F0F3FF] border border-[#E2E8F0] rounded-xl text-xs text-[#111C2D] focus:outline-none focus:bg-white focus:border-[#006C49]"
+                className="w-full h-10 pl-9 pr-10 bg-[#F8F7F1] border border-[#E5E3D8] rounded-xl text-xs text-[#111C2D] focus:outline-none focus:bg-white focus:border-[#173B2C]"
                 placeholder="••••••••"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 text-[#707975] hover:text-[#111C2D]"
+                className="absolute right-3 text-[#8E95A2] hover:text-[#111C2D] cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {showPassword ? 'visibility_off' : 'visibility'}
@@ -142,63 +254,30 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full h-11 bg-[#00362A] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-[#124E3F] transition-all active:scale-[0.99] mt-2"
+            className="w-full h-11 bg-[#173B2C] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-[#24523F] transition-all active:scale-[0.99] mt-2 cursor-pointer"
           >
             {isSubmitting ? (
-              <span>Signing in...</span>
+              <div className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                <span>Signing in...</span>
+              </div>
             ) : (
               <>
-                <span>Log In as {role === 'student' ? 'Student' : 'Owner'}</span>
+                <span>Sign In as {role === 'student' ? 'Student' : 'Owner'}</span>
                 <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </>
             )}
           </button>
-
-          {/* Google SSO button */}
-          <div className="relative my-2">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-[#E2E8F0]" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-[#707975] text-[10px]">Or continue with</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => onLogin('rahul.google@gmail.com', role)}
-            className="w-full h-11 bg-white border border-[#E2E8F0] rounded-xl text-xs font-bold text-[#111C2D] flex items-center justify-center gap-2 hover:bg-[#F0F3FF] transition-colors shadow-xs"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
-            </svg>
-            <span>Continue with Google</span>
-          </button>
         </form>
 
         {/* Footer Link */}
-        <div className="text-center mt-5 pt-3 border-t border-[#F0F3FF]">
-          <p className="text-xs text-[#707975]">
+        <div className="text-center mt-5 pt-4 border-t border-[#E5E3D8] flex flex-col gap-2">
+          <p className="text-xs text-[#5C6470]">
             Don&apos;t have an account?{' '}
             <button
               type="button"
               onClick={onNavigateToRegister}
-              className="text-[#006C49] font-bold hover:underline"
+              className="text-[#15803D] font-black hover:underline cursor-pointer"
             >
               Sign Up Free
             </button>
@@ -206,9 +285,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <button
             type="button"
             onClick={onContinueAsGuest}
-            className="text-[11px] text-[#404945] font-semibold hover:underline mt-2 inline-block"
+            className="text-xs text-[#5C6470] font-bold hover:text-[#173B2C] hover:underline cursor-pointer"
           >
-            Explore as Guest →
+            ← Continue Browsing as Guest
           </button>
         </div>
       </div>
