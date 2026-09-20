@@ -38,6 +38,8 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { PWAInstallBar } from './components/PWAInstallBar';
 import { MobileAppModal } from './components/MobileAppModal';
 import { MobileDeviceSimulator } from './components/MobileDeviceSimulator';
+import { LocationDrawer } from './components/LocationDrawer';
+import { Footer } from './components/Footer';
 
 export default function App() {
   // Application State
@@ -45,12 +47,9 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('student-home');
   const [screenHistory, setScreenHistory] = useState<string[]>(['student-home']);
   const [isMobileAppModalOpen, setIsMobileAppModalOpen] = useState(false);
-  const [isMobileFrameActive, setIsMobileFrameActive] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768;
-    }
-    return false;
-  });
+  const [isLocationDrawerOpen, setIsLocationDrawerOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<string>('Kothrud');
+  const [isMobileFrameActive, setIsMobileFrameActive] = useState<boolean>(false);
 
   // Data State
   const [hostels, setHostels] = useState<Hostel[]>(INITIAL_HOSTELS);
@@ -240,6 +239,11 @@ export default function App() {
     currentScreen === 'login' ||
     currentScreen === 'register';
 
+  const hideBottomNav =
+    isFullScreenView ||
+    currentScreen === 'chat' ||
+    currentScreen === 'map';
+
   const shouldShowBack =
     currentScreen !== 'student-home' &&
     currentScreen !== 'owner-home' &&
@@ -249,7 +253,7 @@ export default function App() {
 
   const appLayout = (
     <div
-      className={`min-h-screen bg-[#F8FAF9] text-[#111C2D] font-sans antialiased selection:bg-[#B4EFDA] selection:text-[#00362A] flex flex-col ${
+      className={`min-h-screen bg-[#F8F7F1] text-[#111C2D] font-sans antialiased selection:bg-[#DDE9D5] selection:text-[#173B2C] flex flex-col ${
         isMobileFrameActive ? 'w-full' : ''
       }`}
     >
@@ -262,10 +266,10 @@ export default function App() {
           onOpenDrawer={() => setIsDrawerOpen(true)}
           onOpenNotifications={() => setIsNotificationsOpen(true)}
           onOpenProfile={() => navigateTo('profile')}
-          onOpenAppModal={() => setIsMobileAppModalOpen(true)}
-          onToggleMobileFrame={() => setIsMobileFrameActive((prev) => !prev)}
-          isMobileFrameActive={isMobileFrameActive}
-          isEmbedded={isMobileFrameActive}
+          onOpenLocationDrawer={() => setIsLocationDrawerOpen(true)}
+          selectedLocation={selectedLocation}
+          onNavigate={navigateTo}
+          savedCount={savedHostelIds.size}
           onBack={handleBack}
           showBack={shouldShowBack}
         />
@@ -273,13 +277,13 @@ export default function App() {
 
       {/* Main Content Viewport */}
       <main
-        className={`max-w-2xl mx-auto px-4 flex-1 w-full ${
+        className={`w-full max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 flex-1 ${
           isFullScreenView
             ? 'pt-4'
             : isMobileFrameActive
             ? 'pt-3'
-            : 'pt-20'
-        }`}
+            : 'pt-4 sm:pt-6'
+        } ${!hideBottomNav && !isMobileFrameActive ? 'pb-20 md:pb-6' : 'pb-6'}`}
       >
         {currentScreen === 'student-home' && (
           <StudentHomeView
@@ -288,10 +292,16 @@ export default function App() {
             savedHostelIds={savedHostelIds}
             onToggleSave={handleToggleSave}
             onSelectHostel={(h) => setSelectedHostel(h)}
-            onSelectArea={(areaName) => handleNavigateToSearch(areaName)}
+            onSelectArea={(areaName) => {
+              setSelectedLocation(areaName);
+              handleNavigateToSearch(areaName);
+            }}
             onNavigateToSearch={handleNavigateToSearch}
             onOpenDirectChat={handleOpenDirectChat}
             onOpenFilter={() => setIsFilterModalOpen(true)}
+            selectedLocation={selectedLocation}
+            onOpenLocationDrawer={() => setIsLocationDrawerOpen(true)}
+            onOpenSavedModal={() => navigateTo('saved')}
           />
         )}
 
@@ -422,7 +432,7 @@ export default function App() {
       </main>
 
       {/* Floating Bottom Navigation Bar */}
-      {!isFullScreenView && (
+      {!hideBottomNav && (
         <BottomNav
           currentScreen={currentScreen}
           onNavigate={navigateTo}
@@ -478,10 +488,29 @@ export default function App() {
         onClose={() => setIsNotificationsOpen(false)}
       />
 
-      {/* PWA Floating Install & Offline Alert Bar */}
-      {!isMobileFrameActive && (
-        <PWAInstallBar onOpenAppModal={() => setIsMobileAppModalOpen(true)} />
+      {/* Swiggy Footer */}
+      {!isFullScreenView && (
+        <Footer
+          onNavigate={navigateTo}
+          onSelectArea={(area) => {
+            setSelectedLocation(area);
+            handleNavigateToSearch(area);
+          }}
+        />
       )}
+
+      {/* Swiggy Location Drawer */}
+      <LocationDrawer
+        isOpen={isLocationDrawerOpen}
+        onClose={() => setIsLocationDrawerOpen(false)}
+        selectedLocation={selectedLocation}
+        onSelectLocation={(loc) => {
+          setSelectedLocation(loc);
+        }}
+      />
+
+      {/* PWA Floating Install & Offline Alert Bar */}
+      <PWAInstallBar onOpenAppModal={() => setIsMobileAppModalOpen(true)} />
 
       {/* Mobile App Install & Native APK Modal */}
       <MobileAppModal

@@ -347,13 +347,13 @@ export const HostelDetailsModal: React.FC<HostelDetailsModalProps> = ({
         </div>
 
         {/* Fixed Bottom Sticky Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-3.5 border-t border-[#E2E8F0] shadow-[0_-4px_20px_rgba(0,0,0,0.06)] z-40">
+        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md p-3.5 border-t border-[#E5E3D8] shadow-[0_-4px_20px_rgba(0,0,0,0.08)] z-50">
           <div className="max-w-lg mx-auto flex items-center gap-3">
             {/* Call Button */}
             <button
               type="button"
               onClick={() => setShowCallAlert(true)}
-              className="flex-1 h-12 rounded-xl bg-white text-[#00362A] font-bold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-95 transition-transform border-2 border-[#00362A]"
+              className="flex-1 h-12 rounded-xl bg-white text-[#173B2C] font-bold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-95 transition-transform border-2 border-[#173B2C]"
             >
               <span className="material-symbols-outlined text-[20px]">call</span>
               <span>Call</span>
@@ -363,7 +363,7 @@ export const HostelDetailsModal: React.FC<HostelDetailsModalProps> = ({
             <button
               type="button"
               onClick={() => setShowBookVisitModal(true)}
-              className="flex-[1.4] h-12 rounded-xl bg-[#00362A] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-[#124E3F] active:scale-95 transition-transform"
+              className="flex-[1.4] h-12 rounded-xl bg-[#173B2C] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-[#24523F] active:scale-95 transition-transform"
             >
               <span className="material-symbols-outlined text-[20px]">chat</span>
               <span>Book Visit</span>

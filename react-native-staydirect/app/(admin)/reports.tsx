@@ -14,15 +14,28 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
-import { useAdminReports, logAdminAction } from '../../src/hooks/useAdmin';
+import {
+  useAdminReports,
+  useAdminReviewReports,
+  useAdminModerateReview,
+  useAdminResolveReviewReport,
+  logAdminAction,
+} from '../../src/hooks/useAdmin';
 import { supabase } from '../../src/lib/supabase';
-import { Report, ReportStatus } from '../../src/types/database.types';
+import {
+  Report,
+  ReportStatus,
+  ReviewReport,
+  ReviewReportStatus,
+  ReviewStatus,
+} from '../../src/types/database.types';
 
 export interface AdminReportsScreenProps {
   onBack?: () => void;
   onInspectHostel?: (hostelId: string) => void;
 }
 
+type QueueType = 'hostels' | 'reviews';
 type StatusTab = 'all' | 'open' | 'investigating' | 'resolved' | 'dismissed';
 
 export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({
@@ -30,18 +43,39 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({
   onInspectHostel,
 }) => {
   const { user } = useAuth();
+  const [queueType, setQueueType] = useState<QueueType>('hostels');
   const [statusFilter, setStatusFilter] = useState<StatusTab>('all');
-  const { data: reports, isLoading, refetch } = useAdminReports(statusFilter);
-  const [refreshing, setRefreshing] = useState(false);
 
+  // Hostel reports query
+  const { data: reports, isLoading: isHostelLoading, refetch: refetchHostels } =
+    useAdminReports(statusFilter);
+
+  // Review reports query
+  const reviewStatusFilter =
+    statusFilter === 'open' ? 'pending' : (statusFilter as any);
+  const {
+    data: reviewReports = [],
+    isLoading: isReviewLoading,
+    refetch: refetchReviews,
+  } = useAdminReviewReports(reviewStatusFilter);
+
+  const moderateReviewMutation = useAdminModerateReview();
+  const resolveReviewReportMutation = useAdminResolveReviewReport();
+
+  const [refreshing, setRefreshing] = useState(false);
   const [activeReportForModal, setActiveReportForModal] = useState<Report | null>(null);
   const [resolutionAction, setResolutionAction] = useState<'resolve' | 'dismiss' | 'investigate'>('resolve');
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Modal for review report resolution
+  const [activeReviewReportForModal, setActiveReviewReportForModal] = useState<ReviewReport | null>(null);
+  const [reviewAction, setReviewAction] = useState<'keep' | 'hide' | 'reject'>('keep');
+  const [reviewActionNotes, setReviewActionNotes] = useState('');
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([refetchHostels(), refetchReviews()]);
     setRefreshing(false);
   };
 
@@ -80,9 +114,42 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({
       setActiveReportForModal(null);
       setResolutionNotes('');
       Alert.alert('Report Updated', `Status updated to ${newStatus}.`);
-      await refetch();
+      await refetchHostels();
     } catch (e: any) {
       Alert.alert('Error', e.message || 'Could not update report.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReviewResolution = async (
+    targetReviewReport: ReviewReport,
+    action: 'keep' | 'hide' | 'reject',
+    notes?: string
+  ) => {
+    try {
+      setIsProcessing(true);
+      const newReviewStatus: ReviewStatus =
+        action === 'keep' ? 'published' : action === 'hide' ? 'hidden' : 'rejected';
+
+      await moderateReviewMutation.mutateAsync({
+        reviewId: targetReviewReport.review_id,
+        newStatus: newReviewStatus,
+        moderationReason: notes || `Moderated by admin: ${action}`,
+      });
+
+      await resolveReviewReportMutation.mutateAsync({
+        reportId: targetReviewReport.id,
+        newStatus: action === 'keep' ? 'dismissed' : 'resolved',
+        resolutionNotes: notes || `Resolved via admin action: ${action}`,
+      });
+
+      setActiveReviewReportForModal(null);
+      setReviewActionNotes('');
+      Alert.alert('Review Moderated', `Review status changed to ${newReviewStatus}.`);
+      await Promise.all([refetchHostels(), refetchReviews()]);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Could not moderate review.');
     } finally {
       setIsProcessing(false);
     }
@@ -106,6 +173,47 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({
         </TouchableOpacity>
       </View>
 
+      {/* Queue Type Selector */}
+      <View style={styles.queueTypeRow}>
+        <TouchableOpacity
+          style={[styles.queueTypeBtn, queueType === 'hostels' && styles.queueTypeBtnActive]}
+          onPress={() => setQueueType('hostels')}
+        >
+          <Ionicons
+            name="business"
+            size={15}
+            color={queueType === 'hostels' ? '#FFFFFF' : '#64748B'}
+          />
+          <Text
+            style={[
+              styles.queueTypeText,
+              queueType === 'hostels' && styles.queueTypeTextActive,
+            ]}
+          >
+            Hostel Complaints ({reports?.length || 0})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.queueTypeBtn, queueType === 'reviews' && styles.queueTypeBtnActive]}
+          onPress={() => setQueueType('reviews')}
+        >
+          <Ionicons
+            name="star"
+            size={15}
+            color={queueType === 'reviews' ? '#FFFFFF' : '#64748B'}
+          />
+          <Text
+            style={[
+              styles.queueTypeText,
+              queueType === 'reviews' && styles.queueTypeTextActive,
+            ]}
+          >
+            Review Disputes ({reviewReports.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Filter Tabs */}
       <View style={styles.tabsRow}>
         {(['all', 'open', 'investigating', 'resolved', 'dismissed'] as StatusTab[]).map((tab) => {
@@ -126,10 +234,12 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({
       </View>
 
       {/* Reports List */}
-      {isLoading ? (
+      {(queueType === 'hostels' ? isHostelLoading : isReviewLoading) ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={THEME.colors.primary} />
-          <Text style={styles.loadingText}>Loading reports...</Text>
+          <Text style={styles.loadingText}>
+            Loading {queueType === 'hostels' ? 'hostel reports' : 'review disputes'}...
+          </Text>
         </View>
       ) : (
         <ScrollView
@@ -138,7 +248,134 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[THEME.colors.primary]} />
           }
         >
-          {reports && reports.length > 0 ? (
+          {queueType === 'reviews' ? (
+            reviewReports.length > 0 ? (
+              reviewReports.map((item) => {
+                const statusColor =
+                  item.status === 'pending'
+                    ? '#DC2626'
+                    : item.status === 'investigating'
+                    ? '#D97706'
+                    : item.status === 'resolved'
+                    ? '#16A34A'
+                    : '#64748B';
+                const statusBg =
+                  item.status === 'pending'
+                    ? '#FEF2F2'
+                    : item.status === 'investigating'
+                    ? '#FFFBEB'
+                    : item.status === 'resolved'
+                    ? '#F0FDF4'
+                    : '#F1F5F9';
+
+                return (
+                  <View key={item.id} style={styles.card}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.reasonBadge}>
+                        <Ionicons name="alert-circle" size={12} color="#DC2626" />
+                        <Text style={styles.reasonBadgeText}>
+                          {item.reason.replace('_', ' ').toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+                        <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+                          {item.status.toUpperCase()}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Reporter info */}
+                    <View style={{ marginBottom: 8 }}>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>
+                        Reported by:{' '}
+                        <Text style={{ fontWeight: '700', color: '#0F172A' }}>
+                          {item.reporter?.full_name || 'Landlord / User'}
+                        </Text>{' '}
+                        ({item.reporter?.role || 'user'})
+                      </Text>
+                      {item.description ? (
+                        <Text style={{ fontSize: 12, color: '#334155', fontStyle: 'italic', marginTop: 2 }}>
+                          "{item.description}"
+                        </Text>
+                      ) : null}
+                    </View>
+
+                    {/* Review Details Box */}
+                    <View style={styles.reviewExcerptBox}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F172A' }}>
+                          {item.review?.student?.full_name || 'Student Author'}
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                          <Ionicons name="star" size={12} color="#F59E0B" />
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#B45309' }}>
+                            {item.review?.rating || 1}.0
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 11, color: '#64748B', marginBottom: 4 }}>
+                        Hostel: {item.review?.hostel?.name || 'Property'} ({item.review?.hostel?.area || 'Pune'})
+                      </Text>
+                      <Text style={{ fontSize: 12, color: '#334155', lineHeight: 17 }}>
+                        "{item.review?.comment || item.review?.review_text || 'No review comment text'}"
+                      </Text>
+                    </View>
+
+                    {/* Action buttons */}
+                    <View style={styles.actionsRow}>
+                      <TouchableOpacity
+                        style={[styles.btnAction, styles.resolveBtn]}
+                        onPress={() => {
+                          setActiveReviewReportForModal(item);
+                          setReviewAction('keep');
+                          setReviewActionNotes('');
+                        }}
+                      >
+                        <Ionicons name="checkmark-circle" size={13} color="#16A34A" />
+                        <Text style={[styles.btnActionText, { color: '#16A34A' }]}>
+                          Keep Published
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.btnAction, styles.investigateBtn]}
+                        onPress={() => {
+                          setActiveReviewReportForModal(item);
+                          setReviewAction('hide');
+                          setReviewActionNotes('');
+                        }}
+                      >
+                        <Ionicons name="eye-off" size={13} color="#D97706" />
+                        <Text style={[styles.btnActionText, { color: '#D97706' }]}>
+                          Hide Review
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.btnAction, { borderColor: '#FECACA', backgroundColor: '#FEF2F2' }]}
+                        onPress={() => {
+                          setActiveReviewReportForModal(item);
+                          setReviewAction('reject');
+                          setReviewActionNotes('');
+                        }}
+                      >
+                        <Ionicons name="trash" size={13} color="#DC2626" />
+                        <Text style={[styles.btnActionText, { color: '#DC2626' }]}>
+                          Reject & Remove
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={styles.emptyBox}>
+                <Ionicons name="shield-checkmark" size={36} color="#CBD5E1" />
+                <Text style={styles.emptyTitle}>No Review Disputes</Text>
+                <Text style={styles.emptySub}>All student reviews are verified and compliant.</Text>
+              </View>
+            )
+          ) : reports && reports.length > 0 ? (
             reports.map((report) => {
               const statusColor =
                 report.status === 'open'
@@ -335,6 +572,102 @@ export const AdminReportsScreen: React.FC<AdminReportsScreenProps> = ({
               >
                 <Text style={styles.modalSubmitText}>
                   {resolutionAction === 'resolve' ? 'Confirm Resolve' : 'Confirm Dismiss'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Review Dispute Resolution Modal */}
+      <Modal
+        visible={!!activeReviewReportForModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setActiveReviewReportForModal(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Ionicons
+                name={
+                  reviewAction === 'keep'
+                    ? 'checkmark-circle'
+                    : reviewAction === 'hide'
+                    ? 'eye-off'
+                    : 'trash'
+                }
+                size={24}
+                color={
+                  reviewAction === 'keep'
+                    ? '#16A34A'
+                    : reviewAction === 'hide'
+                    ? '#D97706'
+                    : '#DC2626'
+                }
+              />
+              <Text style={styles.modalTitle}>
+                {reviewAction === 'keep'
+                  ? 'Keep Review Published'
+                  : reviewAction === 'hide'
+                  ? 'Hide Review'
+                  : 'Reject & Delete Review'}
+              </Text>
+            </View>
+
+            <Text style={styles.modalSub}>
+              {reviewAction === 'keep'
+                ? 'Dismiss landlord complaint and verify that the review complies with student guidelines:'
+                : reviewAction === 'hide'
+                ? 'Temporarily hide this review while investigating factual dispute:'
+                : 'Permanently reject this review for severe policy/community violations:'}
+            </Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Enter audit reason for moderator log..."
+              placeholderTextColor="#94A3B8"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              value={reviewActionNotes}
+              onChangeText={setReviewActionNotes}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setActiveReviewReportForModal(null)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalSubmitBtn,
+                  reviewAction === 'keep'
+                    ? { backgroundColor: '#16A34A' }
+                    : reviewAction === 'hide'
+                    ? { backgroundColor: '#D97706' }
+                    : { backgroundColor: '#DC2626' },
+                ]}
+                onPress={() => {
+                  if (activeReviewReportForModal) {
+                    handleReviewResolution(
+                      activeReviewReportForModal,
+                      reviewAction,
+                      reviewActionNotes
+                    );
+                  }
+                }}
+                disabled={isProcessing}
+              >
+                <Text style={styles.modalSubmitText}>
+                  {reviewAction === 'keep'
+                    ? 'Confirm Publish'
+                    : reviewAction === 'hide'
+                    ? 'Confirm Hide'
+                    : 'Confirm Reject'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -628,5 +961,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  queueTypeRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  queueTypeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  queueTypeBtnActive: {
+    backgroundColor: '#0F172A',
+  },
+  queueTypeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  queueTypeTextActive: {
+    color: '#FFFFFF',
+  },
+  reviewExcerptBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
   },
 });

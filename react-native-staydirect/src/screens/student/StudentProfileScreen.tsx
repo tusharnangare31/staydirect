@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,19 +12,62 @@ import { THEME } from '../../constants/theme';
 import { Header } from '../../components/Header';
 import { useAuth } from '../../context/AuthContext';
 import { PaymentHistoryScreen } from './payment/PaymentHistoryScreen';
+import { StudentPreferencesScreen } from './StudentPreferencesScreen';
+import { SavedSearchesScreen } from './SavedSearchesScreen';
+import { RecentlyViewedScreen } from './RecentlyViewedScreen';
+import { Hostel, AdvancedSearchFilters } from '../../types/database.types';
 
 interface StudentProfileScreenProps {
   onOpenAuthModal: () => void;
+  onSelectHostel?: (hostel: Hostel) => void;
+  onRunSearch?: (filters: AdvancedSearchFilters, query?: string) => void;
 }
 
 export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
   onOpenAuthModal,
+  onSelectHostel,
+  onRunSearch,
 }) => {
   const { user, profile, role, switchDevRole, signOut } = useAuth();
-  const [showPaymentHistory, setShowPaymentHistory] = useState(false);
+  const [activeSubScreen, setActiveSubScreen] = useState<
+    'none' | 'payments' | 'preferences' | 'saved_searches' | 'recently_viewed'
+  >('none');
 
-  if (showPaymentHistory) {
-    return <PaymentHistoryScreen onBack={() => setShowPaymentHistory(false)} />;
+  if (activeSubScreen === 'payments') {
+    return <PaymentHistoryScreen onBack={() => setActiveSubScreen('none')} />;
+  }
+
+  if (activeSubScreen === 'preferences') {
+    return (
+      <StudentPreferencesScreen
+        onBack={() => setActiveSubScreen('none')}
+        onSaved={() => setActiveSubScreen('none')}
+      />
+    );
+  }
+
+  if (activeSubScreen === 'saved_searches') {
+    return (
+      <SavedSearchesScreen
+        onBack={() => setActiveSubScreen('none')}
+        onSelectSearch={(filters, query) => {
+          setActiveSubScreen('none');
+          onRunSearch?.(filters, query);
+        }}
+      />
+    );
+  }
+
+  if (activeSubScreen === 'recently_viewed') {
+    return (
+      <RecentlyViewedScreen
+        onBack={() => setActiveSubScreen('none')}
+        onSelectHostel={(h) => {
+          setActiveSubScreen('none');
+          onSelectHostel?.(h);
+        }}
+      />
+    );
   }
 
   const handleSignOut = () => {
@@ -36,7 +79,7 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <Header title="My Student Profile" subtitle="Pune • StayDirect" />
+      <Header title="My Student Account" subtitle="Pune • StayDirect" />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* User Card */}
@@ -54,14 +97,67 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
               </Text>
               <MaterialCommunityIcons name="check-decagram" size={18} color={THEME.colors.primary} />
             </View>
-            <Text style={styles.emailText}>{user?.email || 'Guest Student Account'}</Text>
+            <Text style={styles.emailText}>{user?.email || 'Student Account'}</Text>
             <Text style={styles.collegeText}>
               🎓 {profile?.college_or_company || 'COEP / MIT WPU / Pune University'}
             </Text>
           </View>
         </View>
 
-        {/* Role Switcher Banner */}
+        {/* Discovery & Search Personalization (Phase 9) */}
+        <View style={styles.sectionBox}>
+          <Text style={styles.sectionHeader}>Discovery & Search Preferences</Text>
+
+          <TouchableOpacity
+            style={styles.actionItem}
+            onPress={() => setActiveSubScreen('preferences')}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="sparkles" size={18} color="#0284C7" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.actionItemText}>Search & Match Preferences</Text>
+              <Text style={styles.actionItemSub}>
+                Preferred Pune areas, budget range, sharing & meal habits
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionItem}
+            onPress={() => setActiveSubScreen('saved_searches')}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="notifications" size={18} color="#D97706" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.actionItemText}>Saved Search Alerts</Text>
+              <Text style={styles.actionItemSub}>
+                Get notified when new verified rooms match your criteria
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionItem}
+            onPress={() => setActiveSubScreen('recently_viewed')}
+          >
+            <View style={[styles.iconCircle, { backgroundColor: '#F1F5F9' }]}>
+              <Ionicons name="time" size={18} color="#475569" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.actionItemText}>Recently Viewed Hostels</Text>
+              <Text style={styles.actionItemSub}>
+                Quick access to properties you previously inspected
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Role Switcher Banners */}
         <TouchableOpacity
           style={styles.switchBanner}
           onPress={() => switchDevRole('owner')}
@@ -72,13 +168,12 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.switchTitle}>Hostel or PG Owner?</Text>
             <Text style={styles.switchSub}>
-              Switch to Owner Mode to list your property and manage student vacancies with zero commissions.
+              Switch to Owner Mode to list your property and manage vacancies with zero commissions.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={THEME.colors.primary} />
         </TouchableOpacity>
 
-        {/* Switch to Admin Mode */}
         <TouchableOpacity
           style={[styles.switchBanner, { backgroundColor: '#1E293B', borderColor: '#334155' }]}
           onPress={() => switchDevRole('admin')}
@@ -89,7 +184,7 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
           <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={[styles.switchTitle, { color: '#F8FAFC' }]}>Admin Control Panel</Text>
             <Text style={[styles.switchSub, { color: '#94A3B8' }]}>
-              Verify owner documents, moderate listings, handle reports & manage Pune users.
+              Verify owner documents, moderate listings, search analytics & reports.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color="#38BDF8" />
@@ -126,12 +221,14 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
 
           <TouchableOpacity
             style={styles.actionItem}
-            onPress={() => setShowPaymentHistory(true)}
+            onPress={() => setActiveSubScreen('payments')}
           >
-            <Ionicons name="card-outline" size={20} color={THEME.colors.primary} />
-            <View style={{ flex: 1, marginLeft: 10 }}>
+            <View style={[styles.iconCircle, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="card-outline" size={18} color="#059669" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={styles.actionItemText}>Payment & Deposit History</Text>
-              <Text style={{ fontSize: 11, color: THEME.colors.textSecondary }}>
+              <Text style={styles.actionItemSub}>
                 Official receipts, refundable deposits & refund statuses
               </Text>
             </View>
@@ -140,20 +237,32 @@ export const StudentProfileScreen: React.FC<StudentProfileScreenProps> = ({
 
           {!user ? (
             <TouchableOpacity style={styles.actionItem} onPress={onOpenAuthModal}>
-              <Ionicons name="log-in-outline" size={20} color={THEME.colors.primary} />
-              <Text style={styles.actionItemText}>Sign In / Create Account</Text>
+              <View style={[styles.iconCircle, { backgroundColor: '#F1F5F9' }]}>
+                <Ionicons name="log-in-outline" size={18} color={THEME.colors.primary} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.actionItemText}>Sign In / Create Account</Text>
+                <Text style={styles.actionItemSub}>Sync favorites and saved searches across devices</Text>
+              </View>
               <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.actionItem} onPress={handleSignOut}>
-              <Ionicons name="log-out-outline" size={20} color={THEME.colors.error} />
-              <Text style={[styles.actionItemText, { color: THEME.colors.error }]}>
-                Sign Out
-              </Text>
+              <View style={[styles.iconCircle, { backgroundColor: '#FEF2F2' }]}>
+                <Ionicons name="log-out-outline" size={18} color={THEME.colors.error} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.actionItemText, { color: THEME.colors.error }]}>
+                  Sign Out
+                </Text>
+                <Text style={styles.actionItemSub}>Sign out of your student session</Text>
+              </View>
               <Ionicons name="chevron-forward" size={16} color={THEME.colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -179,76 +288,101 @@ const styles = StyleSheet.create({
     ...THEME.shadows.soft,
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: THEME.colors.secondary,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: THEME.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
+    color: '#FFF',
     fontSize: 20,
-    fontWeight: '800',
-    color: THEME.colors.primary,
+    fontWeight: '700',
   },
   fullName: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
   emailText: {
     fontSize: 12,
     color: THEME.colors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
   collegeText: {
-    fontSize: 12,
+    fontSize: 11,
     color: THEME.colors.primary,
     fontWeight: '600',
-    marginTop: 4,
-  },
-  switchBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.colors.secondary,
-    padding: 14,
-    borderRadius: THEME.borderRadius.lg,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: THEME.colors.secondaryDark,
-  },
-  switchIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: THEME.colors.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  switchTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: THEME.colors.primary,
-  },
-  switchSub: {
-    fontSize: 11,
-    color: THEME.colors.primaryLight,
-    marginTop: 2,
-    lineHeight: 15,
+    marginTop: 3,
   },
   sectionBox: {
     backgroundColor: THEME.colors.surface,
     borderRadius: THEME.borderRadius.lg,
-    padding: 16,
     borderWidth: 1,
     borderColor: THEME.colors.border,
+    padding: 14,
     marginBottom: 16,
+    ...THEME.shadows.soft,
   },
   sectionHeader: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 14,
+    fontWeight: '700',
     color: THEME.colors.textPrimary,
     marginBottom: 12,
+  },
+  actionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  iconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionItemText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: THEME.colors.textPrimary,
+  },
+  actionItemSub: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+  },
+  switchBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: THEME.borderRadius.lg,
+    padding: 14,
+    marginBottom: 14,
+  },
+  switchIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  switchTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  switchSub: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 15,
   },
   infoRow: {
     flexDirection: 'row',
@@ -256,7 +390,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   infoTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: THEME.colors.textPrimary,
   },
@@ -264,18 +398,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: THEME.colors.textSecondary,
     marginTop: 2,
-    lineHeight: 16,
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 10,
-  },
-  actionItemText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '700',
-    color: THEME.colors.textPrimary,
+    lineHeight: 15,
   },
 });

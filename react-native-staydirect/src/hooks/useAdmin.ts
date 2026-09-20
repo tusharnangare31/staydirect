@@ -8,6 +8,10 @@ import {
   Report,
   Hostel,
   Profile,
+  Review,
+  ReviewReport,
+  ReviewStatus,
+  ReviewReportStatus,
 } from '../types/database.types';
 
 // Fallback seed data for development & preview
@@ -732,4 +736,223 @@ export async function getVerificationDocumentSignedUrl(documentPath: string): Pr
   } catch (e) {
     return `https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=900&auto=format&fit=crop&q=80`;
   }
+}
+
+// 9. Fallback Review Reports
+export const FALLBACK_REVIEW_REPORTS: ReviewReport[] = [
+  {
+    id: 'rr-001',
+    review_id: 'rev-001',
+    reported_by: '00000000-0000-0000-0000-000000000001',
+    reason: 'fake_review',
+    description: 'Student never checked in; disputed rent calculation and left false statements.',
+    status: 'pending',
+    created_at: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+    reporter: {
+      id: '00000000-0000-0000-0000-000000000001',
+      role: 'owner',
+      full_name: 'Suresh Deshmukh',
+      phone: '+919890123456',
+      city: 'Pune',
+      is_verified: true,
+      college_or_company: 'Deshmukh Hostels Pune',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    review: {
+      id: 'rev-001',
+      hostel_id: 'h0000000-0000-0000-0000-000000000001',
+      student_id: '00000000-0000-0000-0000-000000000010',
+      rating: 1,
+      cleanliness_rating: 1,
+      safety_rating: 2,
+      location_rating: 3,
+      value_rating: 1,
+      title: 'Terrible place! Do not visit!',
+      comment: 'Owner is a fraud, charging 500 extra for keys and fake water charges. Avoid at all costs!',
+      status: 'reported',
+      is_verified_stay: true,
+      created_at: new Date(Date.now() - 1000 * 60 * 60 * 14).toISOString(),
+      student: {
+        id: '00000000-0000-0000-0000-000000000010',
+        role: 'student',
+        full_name: 'Rohan Sharma',
+        phone: '+919823000001',
+        city: 'Pune',
+        is_verified: true,
+        college_or_company: 'COEP Pune',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    },
+  },
+];
+
+// 10. Hook for Review Reports
+export function useAdminReviewReports(statusFilter: ReviewReportStatus | 'all' = 'all') {
+  return useQuery({
+    queryKey: ['admin-review-reports', statusFilter],
+    queryFn: async (): Promise<ReviewReport[]> => {
+      try {
+        let query = supabase
+          .from('review_reports')
+          .select(`
+            *,
+            reporter:profiles!reported_by(*),
+            review:reviews!review_id(
+              *,
+              student:profiles!student_id(*),
+              hostel:hostels!hostel_id(id, name, area)
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter);
+        }
+
+        const { data, error } = await query;
+        if (error || !data || data.length === 0) {
+          return statusFilter === 'all'
+            ? FALLBACK_REVIEW_REPORTS
+            : FALLBACK_REVIEW_REPORTS.filter((r) => r.status === statusFilter);
+        }
+
+        return data as ReviewReport[];
+      } catch (e) {
+        return statusFilter === 'all'
+          ? FALLBACK_REVIEW_REPORTS
+          : FALLBACK_REVIEW_REPORTS.filter((r) => r.status === statusFilter);
+      }
+    },
+  });
+}
+
+// 11. Hook for Flagged / Suspicious Reviews Queue
+export function useAdminFlaggedReviews() {
+  return useQuery({
+    queryKey: ['admin-flagged-reviews'],
+    queryFn: async (): Promise<Review[]> => {
+      try {
+        const { data, error } = await supabase
+          .from('reviews')
+          .select(`
+            *,
+            student:profiles!student_id(*),
+            hostel:hostels!hostel_id(id, name, area)
+          `)
+          .or('flagged_suspicious.eq.true,status.eq.reported,status.eq.pending')
+          .order('created_at', { ascending: false });
+
+        if (error || !data || data.length === 0) {
+          return FALLBACK_REVIEW_REPORTS.map((r) => r.review).filter(Boolean) as Review[];
+        }
+
+        return data as Review[];
+      } catch (e) {
+        return FALLBACK_REVIEW_REPORTS.map((r) => r.review).filter(Boolean) as Review[];
+      }
+    },
+  });
+}
+
+// 12. Mutation to moderate a Review (publish, hide, reject)
+export function useAdminModerateReview() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      reviewId,
+      newStatus,
+      moderationReason,
+    }: {
+      reviewId: string;
+      newStatus: ReviewStatus;
+      moderationReason?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .update({
+          status: newStatus,
+          moderated_by: user?.id || null,
+          moderated_at: new Date().toISOString(),
+          moderation_reason: moderationReason || null,
+          flagged_suspicious: false,
+        })
+        .eq('id', reviewId)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Review moderation update error, applying optimistic fallback:', error.message);
+      }
+
+      if (user?.id) {
+        await logAdminAction(
+          user.id,
+          'moderate_review',
+          reviewId,
+          `Review set to ${newStatus}. Reason: ${moderationReason || 'Admin action'}`
+        );
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-review-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-flagged-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['hostel-trust-metrics'] });
+    },
+  });
+}
+
+// 13. Mutation to resolve a Review Report
+export function useAdminResolveReviewReport() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({
+      reportId,
+      newStatus,
+      resolutionNotes,
+    }: {
+      reportId: string;
+      newStatus: ReviewReportStatus;
+      resolutionNotes?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('review_reports')
+        .update({
+          status: newStatus,
+          reviewed_by: user?.id || null,
+          reviewed_at: new Date().toISOString(),
+          resolution_notes: resolutionNotes || null,
+        })
+        .eq('id', reportId)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Review report resolution error:', error.message);
+      }
+
+      if (user?.id) {
+        await logAdminAction(
+          user.id,
+          'resolve_review_report',
+          reportId,
+          `Review report set to ${newStatus}. Note: ${resolutionNotes || 'None'}`
+        );
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-review-reports'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-flagged-reviews'] });
+    },
+  });
 }

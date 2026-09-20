@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Hostel } from '../types';
+import { HostelCard } from './HostelCard';
 
 interface SearchHostelsViewProps {
   hostels: Hostel[];
@@ -12,9 +13,22 @@ interface SearchHostelsViewProps {
   onOpenFilter: () => void;
 }
 
+const POPULAR_SEARCH_SUGGESTIONS = [
+  'Kothrud',
+  'Girls PG',
+  'Near MIT-WPU',
+  'Near COEP',
+  'Single Room',
+  'Food Included',
+  'Under ₹8,000',
+  'Hinjewadi IT Park',
+  'Viman Nagar',
+  'Wakad',
+];
+
 export const SearchHostelsView: React.FC<SearchHostelsViewProps> = ({
   hostels,
-  initialQuery = 'Hinjewadi, Pune',
+  initialQuery = '',
   initialCategory = 'all',
   savedHostelIds,
   onToggleSave,
@@ -23,44 +37,73 @@ export const SearchHostelsView: React.FC<SearchHostelsViewProps> = ({
   onOpenFilter,
 }) => {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
-  const [selectedFilter, setSelectedFilter] = useState(initialCategory);
+  const [activeFilterPills, setActiveFilterPills] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    if (initialCategory && initialCategory !== 'all') {
+      s.add(initialCategory);
+    }
+    return s;
+  });
   const [sortOption, setSortOption] = useState<'relevance' | 'price-low' | 'price-high' | 'rating'>('relevance');
-  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
 
-  const filterPills = [
-    { id: 'all', label: 'All' },
-    { id: 'pg', label: 'PG' },
-    { id: 'hostel', label: 'Hostel' },
-    { id: 'boys', label: 'Boys' },
-    { id: 'girls', label: 'Girls' },
-    { id: 'nearby', label: 'Nearby' },
-  ];
+  // Toggle filter pill
+  const toggleFilterPill = (filterId: string) => {
+    setActiveFilterPills((prev) => {
+      const next = new Set(prev);
+      if (next.has(filterId)) {
+        next.delete(filterId);
+      } else {
+        next.add(filterId);
+      }
+      return next;
+    });
+  };
 
   const filteredHostels = useMemo(() => {
     let result = [...hostels];
 
-    // Filter by text
+    // Filter by text query across name, area, address, and amenities
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase().trim();
       result = result.filter(
         (h) =>
           h.name.toLowerCase().includes(q) ||
           h.area.toLowerCase().includes(q) ||
-          h.fullAddress.toLowerCase().includes(q)
+          h.fullAddress.toLowerCase().includes(q) ||
+          h.gender.toLowerCase().includes(q) ||
+          h.distanceTag.toLowerCase().includes(q) ||
+          h.amenities.some((a) => a.toLowerCase().includes(q))
       );
     }
 
-    // Filter by Category Pill
-    if (selectedFilter === 'pg') {
-      result = result.filter((h) => h.category === 'PG');
-    } else if (selectedFilter === 'hostel') {
-      result = result.filter((h) => h.category === 'Hostel');
-    } else if (selectedFilter === 'boys') {
-      result = result.filter((h) => h.gender === 'Boys');
-    } else if (selectedFilter === 'girls') {
+    // Filter by Category Pills
+    if (activeFilterPills.has('rating-4')) {
+      result = result.filter((h) => h.rating >= 4.0);
+    }
+    if (activeFilterPills.has('girls')) {
       result = result.filter((h) => h.gender === 'Girls');
-    } else if (selectedFilter === 'colleges') {
-      result = result.filter((h) => h.distanceTag.toLowerCase().includes('symbiosis') || h.distanceTag.toLowerCase().includes('college'));
+    }
+    if (activeFilterPills.has('boys')) {
+      result = result.filter((h) => h.gender === 'Boys');
+    }
+    if (activeFilterPills.has('food')) {
+      result = result.filter((h) =>
+        h.amenities.some((a) => a.toLowerCase().includes('meal') || a.toLowerCase().includes('food'))
+      );
+    }
+    if (activeFilterPills.has('under-10k') || activeFilterPills.has('budget')) {
+      result = result.filter((h) => h.monthlyRent <= 10000);
+    }
+    if (activeFilterPills.has('verified')) {
+      result = result.filter((h) => h.verified);
+    }
+    if (activeFilterPills.has('single')) {
+      result = result.filter(
+        (h) =>
+          h.roomTypeTag.toLowerCase().includes('single') ||
+          h.occupancies.some((o) => o.type.toLowerCase().includes('single'))
+      );
     }
 
     // Sort
@@ -73,304 +116,204 @@ export const SearchHostelsView: React.FC<SearchHostelsViewProps> = ({
     }
 
     return result;
-  }, [hostels, searchQuery, selectedFilter, sortOption]);
-
-  const currentSortLabel = {
-    relevance: 'Sort',
-    'price-low': 'Price: Low to High',
-    'price-high': 'Price: High to Low',
-    rating: 'Highest Rated',
-  }[sortOption];
+  }, [hostels, searchQuery, activeFilterPills, sortOption]);
 
   return (
-    <div className="flex flex-col w-full pb-28">
-      {/* Search & Location Bar */}
-      <section className="w-full flex items-center gap-2 mb-3">
-        <div className="flex-1 flex items-center bg-white rounded-xl px-3.5 py-2.5 shadow-sm border border-[#E2E8F0]">
-          <span className="material-symbols-outlined text-[#00362A] text-[20px] mr-2">search</span>
+    <div className="w-full flex flex-col space-y-6 pb-28 pt-2 animate-fadeIn">
+      {/* Centered Swiggy Search Input Box */}
+      <section className="w-full max-w-3xl mx-auto">
+        <div className="relative flex items-center bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] px-5 py-4 border border-gray-200 focus-within:border-[#006C49] focus-within:shadow-[0_4px_24px_rgba(0,108,73,0.14)] transition-all">
+          <span className="material-symbols-outlined text-[#006C49] text-[24px] mr-3 shrink-0">
+            search
+          </span>
           <input
-            id="search-input"
+            id="swiggy-search-input"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search area, college, hostel..."
-            className="w-full bg-transparent text-sm text-[#111C2D] focus:outline-none placeholder:text-[#707975]"
+            placeholder="Search for hostels, areas, colleges (MIT, COEP, Symbiosis)..."
+            className="w-full text-base text-[#111C2D] placeholder-gray-400 focus:outline-none bg-transparent"
+            autoFocus
           />
           {searchQuery && (
             <button
-              type="button"
               onClick={() => setSearchQuery('')}
-              aria-label="Clear search input"
-              className="w-7 h-7 flex items-center justify-center rounded-full text-[#BFC9C3] hover:text-[#404945] transition-colors"
+              className="text-gray-400 hover:text-gray-600 p-1"
             >
-              <span className="material-symbols-outlined text-[18px]">cancel</span>
+              <span className="material-symbols-outlined text-[20px]">cancel</span>
             </button>
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenFilter}
-          aria-label="Filter options"
-          className="w-11 h-11 flex items-center justify-center bg-white rounded-xl shadow-sm text-[#00362A] border border-[#E2E8F0] transition-colors hover:bg-[#F0F3FF] shrink-0 active:scale-95"
-        >
-          <span className="material-symbols-outlined text-[20px]">tune</span>
-        </button>
-      </section>
-
-      {/* Quick Filter Category Pills */}
-      <section
-        aria-label="Quick filters"
-        className="w-full -mx-4 px-4 overflow-x-auto no-scrollbar flex items-center gap-2 pb-2 mb-2"
-      >
-        {filterPills.map((pill) => {
-          const isActive = selectedFilter === pill.id;
-          return (
-            <button
-              key={pill.id}
-              type="button"
-              onClick={() => setSelectedFilter(pill.id)}
-              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold shadow-xs transition-all ${
-                isActive
-                  ? 'bg-[#124E3F] text-white'
-                  : 'bg-white text-[#404945] border border-[#E2E8F0] hover:bg-[#F0F3FF]'
-              }`}
-            >
-              {pill.label}
-            </button>
-          );
-        })}
-      </section>
-
-      {/* Results Summary & Sorting Strip */}
-      <section className="w-full flex items-center justify-between py-1 mb-3">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#006C49]" />
-          <span className="text-xs font-bold text-[#111C2D]">
-            {filteredHostels.length > 0 ? `${filteredHostels.length * 8} hostels found` : '0 hostels found'}
+        {/* Popular Suggestions Quick Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-3 px-1">
+          <span className="text-xs font-bold text-gray-400 shrink-0 uppercase tracking-wider">
+            Popular:
           </span>
+          {POPULAR_SEARCH_SUGGESTIONS.map((item) => (
+            <button
+              key={item}
+              onClick={() => setSearchQuery(item)}
+              className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 hover:bg-emerald-50 hover:text-[#006C49] text-gray-700 transition-colors shrink-0 cursor-pointer"
+            >
+              {item}
+            </button>
+          ))}
         </div>
+      </section>
 
-        <div className="relative">
+      {/* Sticky Swiggy Filter Bar */}
+      <section className="sticky top-16 sm:top-[72px] z-30 bg-white/95 backdrop-blur-md py-3 border-y border-[#E5E3D8] -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="max-w-[1240px] mx-auto flex items-center gap-2.5 overflow-x-auto no-scrollbar">
+          {/* Main Filter Modal trigger */}
           <button
-            type="button"
-            onClick={() => setShowSortMenu(!showSortMenu)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-[#E2E8F0] text-[#404945] shadow-xs text-xs font-semibold hover:text-[#00362A] transition-colors"
+            onClick={onOpenFilter}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all shrink-0 active:scale-95 cursor-pointer shadow-xs ${
+              activeFilterPills.size > 0
+                ? 'border-[#00362A] bg-[#00362A] text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+            }`}
           >
-            <span className="material-symbols-outlined text-[16px]">swap_vert</span>
-            <span>{currentSortLabel}</span>
+            <span className="material-symbols-outlined text-[16px]">tune</span>
+            <span>Filter</span>
+            {activeFilterPills.size > 0 && (
+              <span className="w-4 h-4 rounded-full bg-[#006C49] text-white text-[10px] font-extrabold flex items-center justify-center ml-0.5">
+                {activeFilterPills.size}
+              </span>
+            )}
           </button>
 
-          {/* Sort Dropdown Menu */}
-          {showSortMenu && (
-            <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-lg border border-[#E2E8F0] p-1.5 z-20">
+          {/* Sort Dropdown */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:border-gray-400 transition-all active:scale-95 cursor-pointer shadow-xs"
+            >
+              <span>Sort By</span>
+              <span className="material-symbols-outlined text-[16px]">expand_more</span>
+            </button>
+
+            {showSortDropdown && (
+              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-40 animate-fadeIn">
+                {[
+                  { id: 'relevance', label: 'Relevance (Default)' },
+                  { id: 'rating', label: 'Ratings 4.5+ High' },
+                  { id: 'price-low', label: 'Rent: Low to High' },
+                  { id: 'price-high', label: 'Rent: High to Low' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setSortOption(s.id as typeof sortOption);
+                      setShowSortDropdown(false);
+                    }}
+                    className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 transition-colors flex items-center justify-between ${
+                      sortOption === s.id ? 'text-[#006C49] font-bold bg-emerald-50/50' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>{s.label}</span>
+                    {sortOption === s.id && (
+                      <span className="material-symbols-outlined text-[16px]">check</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Filter Pills */}
+          {[
+            { id: 'rating-4', label: 'Ratings 4.0+' },
+            { id: 'girls', label: 'Girls Only' },
+            { id: 'boys', label: 'Boys Only' },
+            { id: 'food', label: 'Food Included' },
+            { id: 'under-10k', label: 'Under ₹10,000' },
+            { id: 'verified', label: '100% Verified' },
+            { id: 'single', label: 'Single Room' },
+          ].map((pill) => {
+            const isSelected = activeFilterPills.has(pill.id);
+            return (
               <button
-                type="button"
-                onClick={() => {
-                  setSortOption('relevance');
-                  setShowSortMenu(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold ${
-                  sortOption === 'relevance'
-                    ? 'text-[#00362A] bg-[#F0F3FF]'
-                    : 'text-[#404945] hover:bg-[#F9F9FF]'
+                key={pill.id}
+                onClick={() => toggleFilterPill(pill.id)}
+                className={`flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all shrink-0 cursor-pointer shadow-xs active:scale-95 ${
+                  isSelected
+                    ? 'border-[#00362A] bg-[#00362A] text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                 }`}
               >
-                Relevance
+                <span>{pill.label}</span>
+                {isSelected && (
+                  <span className="material-symbols-outlined text-[14px]">close</span>
+                )}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSortOption('price-low');
-                  setShowSortMenu(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold ${
-                  sortOption === 'price-low'
-                    ? 'text-[#00362A] bg-[#F0F3FF]'
-                    : 'text-[#404945] hover:bg-[#F9F9FF]'
-                }`}
-              >
-                Price: Low to High
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSortOption('price-high');
-                  setShowSortMenu(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold ${
-                  sortOption === 'price-high'
-                    ? 'text-[#00362A] bg-[#F0F3FF]'
-                    : 'text-[#404945] hover:bg-[#F9F9FF]'
-                }`}
-              >
-                Price: High to Low
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSortOption('rating');
-                  setShowSortMenu(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold ${
-                  sortOption === 'rating'
-                    ? 'text-[#00362A] bg-[#F0F3FF]'
-                    : 'text-[#404945] hover:bg-[#F9F9FF]'
-                }`}
-              >
-                Highest Rated
-              </button>
-            </div>
+            );
+          })}
+
+          {/* Map View Toggle */}
+          <button
+            onClick={() => onOpenMap()}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border border-gray-300 bg-white text-gray-700 hover:border-[#006C49] hover:text-[#006C49] transition-all shrink-0 ml-auto"
+          >
+            <span className="material-symbols-outlined text-[16px]">map</span>
+            <span>Map View</span>
+          </button>
+
+          {activeFilterPills.size > 0 && (
+            <button
+              onClick={() => setActiveFilterPills(new Set())}
+              className="text-xs font-bold text-[#006C49] hover:underline px-2 shrink-0"
+            >
+              Clear
+            </button>
           )}
         </div>
       </section>
 
-      {/* Hostel Listing Feed */}
-      <section aria-label="Hostel listings" className="flex flex-col gap-3 w-full">
-        {filteredHostels.length === 0 ? (
-          <div className="bg-white rounded-2xl p-8 text-center border border-[#E2E8F0]">
-            <span className="material-symbols-outlined text-[40px] text-[#707975] mb-2">
-              search_off
-            </span>
-            <h3 className="text-base font-bold text-[#111C2D]">No hostels match your search</h3>
-            <p className="text-xs text-[#404945] mt-1">
-              Try adjusting your search area or filter criteria.
-            </p>
-            <button
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedFilter('all');
-              }}
-              className="mt-4 px-4 py-2 bg-[#00362A] text-white text-xs font-semibold rounded-xl"
-            >
-              Reset Filters
-            </button>
-          </div>
-        ) : (
-          filteredHostels.map((hostel) => {
-            const isSaved = savedHostelIds.has(hostel.id);
-
-            return (
-              <article
-                key={hostel.id}
-                onClick={() => onSelectHostel(hostel)}
-                className="w-full bg-white rounded-xl p-3 shadow-xs border border-[#E2E8F0]/80 hover:shadow-md transition-shadow relative cursor-pointer group"
-              >
-                <div className="flex gap-3">
-                  {/* Property Image & Badge */}
-                  <div className="relative w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-[#E7EEFF]">
-                    <img
-                      src={hostel.imageUrl}
-                      alt={hostel.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <span className="absolute bottom-1.5 left-1.5 bg-[#00362A]/80 backdrop-blur-xs text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
-                      {hostel.roomTypeTag}
-                    </span>
-                  </div>
-
-                  {/* Details */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-start justify-between gap-1">
-                        <div className="min-w-0">
-                          <h3 className="text-sm font-bold text-[#111C2D] truncate">
-                            {hostel.name}
-                          </h3>
-                          <p className="text-xs text-[#404945] truncate">{hostel.fullAddress}</p>
-                        </div>
-                        <button
-                          type="button"
-                          aria-label={`Save ${hostel.name}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleSave(hostel.id);
-                          }}
-                          className={`p-1 transition-colors ${
-                            isSaved ? 'text-[#BA1A1A]' : 'text-[#BFC9C3] hover:text-[#BA1A1A]'
-                          }`}
-                        >
-                          <span
-                            className="material-symbols-outlined text-[20px]"
-                            style={{ fontVariationSettings: isSaved ? "'FILL' 1" : "'FILL' 0" }}
-                          >
-                            favorite
-                          </span>
-                        </button>
-                      </div>
-
-                      {/* Rating pill */}
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <div className="flex items-center gap-0.5 bg-[#FFDDB8] px-1.5 py-0.5 rounded text-[11px] font-bold text-[#2A1700]">
-                          <span
-                            className="material-symbols-outlined text-[13px] text-[#F8A00F]"
-                            style={{ fontVariationSettings: "'FILL' 1" }}
-                          >
-                            star
-                          </span>
-                          <span>{hostel.rating}</span>
-                        </div>
-                        <span className="text-xs text-[#707975]">({hostel.reviewCount} reviews)</span>
-                      </div>
-                    </div>
-
-                    {/* Amenities chips */}
-                    <div className="flex items-center gap-1.5 my-1 flex-wrap">
-                      {hostel.amenities.slice(0, 2).map((amenity, i) => (
-                        <span
-                          key={i}
-                          className="bg-[#F0F3FF] text-[#00362A] text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1"
-                        >
-                          <span className="material-symbols-outlined text-[12px]">
-                            {amenity.toLowerCase().includes('wi-fi') || amenity.toLowerCase().includes('wifi')
-                              ? 'wifi'
-                              : amenity.toLowerCase().includes('meal')
-                              ? 'restaurant'
-                              : amenity.toLowerCase().includes('laundry')
-                              ? 'local_laundry_service'
-                              : amenity.toLowerCase().includes('ac')
-                              ? 'ac_unit'
-                              : 'check'}
-                          </span>
-                          {amenity}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Price & Zero Brokerage Tag */}
-                    <div className="flex items-baseline justify-between pt-1 border-t border-[#F0F3FF]">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-sm font-bold text-[#00362A]">
-                          ₹{hostel.monthlyRent.toLocaleString('en-IN')}
-                        </span>
-                        <span className="text-[11px] text-[#707975]">/month</span>
-                      </div>
-                      <span className="text-[11px] font-semibold text-[#006C49] flex items-center gap-0.5">
-                        <span className="material-symbols-outlined text-[14px]">
-                          {hostel.instantVisit ? 'bolt' : 'verified'}
-                        </span>
-                        {hostel.instantVisit ? 'Instant Visit' : 'Zero Brokerage'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          })
-        )}
-      </section>
-
-      {/* Floating Map Exploration Trigger Button */}
-      <div className="mt-4 flex justify-center w-full">
-        <button
-          type="button"
-          onClick={() => onOpenMap(searchQuery || 'Hinjewadi')}
-          className="flex items-center gap-2 px-5 py-3 rounded-full bg-[#00362A] text-white shadow-md hover:bg-[#124E3F] transition-all active:scale-95 text-xs font-semibold"
-        >
-          <span className="material-symbols-outlined text-[20px]">map</span>
-          <span>View on Map ({searchQuery.includes('Hinjewadi') ? 'Hinjewadi' : 'Pune'})</span>
-        </button>
+      {/* Results Count */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-bold text-gray-600">
+          {filteredHostels.length} {filteredHostels.length === 1 ? 'hostel' : 'hostels'} found
+          {searchQuery ? ` for "${searchQuery}"` : ''}
+        </span>
       </div>
+
+      {/* Hostels Card Grid */}
+      {filteredHostels.length === 0 ? (
+        <div className="w-full bg-white rounded-2xl p-12 text-center border border-gray-100 shadow-sm space-y-4">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#006C49] flex items-center justify-center mx-auto">
+            <span className="material-symbols-outlined text-[32px]">search_off</span>
+          </div>
+          <h3 className="text-lg font-bold text-[#111C2D]">No matching hostels found</h3>
+          <p className="text-sm text-gray-500 max-w-sm mx-auto">
+            Try searching for a different area like Kothrud, Hinjewadi, or clear your applied filters.
+          </p>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setActiveFilterPills(new Set());
+            }}
+            className="px-5 py-2.5 bg-[#006C49] text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+          >
+            Reset Search
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          {filteredHostels.map((hostel) => {
+            const isSaved = savedHostelIds.has(hostel.id);
+            return (
+              <HostelCard
+                key={hostel.id}
+                hostel={hostel}
+                onClick={() => onSelectHostel(hostel)}
+                isSaved={isSaved}
+                onToggleSave={onToggleSave}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

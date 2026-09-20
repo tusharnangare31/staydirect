@@ -42,7 +42,7 @@ import { AdminPaymentsScreen } from './app/(admin)/payments';
 import { AdminSettingsScreen } from './app/(admin)/settings';
 
 import { AuthModal } from './src/components/AuthModal';
-import { Hostel } from './src/types/database.types';
+import { Hostel, AdvancedSearchFilters } from './src/types/database.types';
 
 const queryClient = new QueryClient();
 
@@ -56,7 +56,11 @@ function MainAppNavigation() {
   // Student Navigation State
   const [studentTab, setStudentTab] = useState<StudentTab>('home');
   const [selectedHostel, setSelectedHostel] = useState<Hostel | null>(null);
-  const [searchParams, setSearchParams] = useState<{ query: string; area: string }>({
+  const [searchParams, setSearchParams] = useState<{
+    query: string;
+    area: string;
+    filters?: AdvancedSearchFilters;
+  }>({
     query: '',
     area: 'All',
   });
@@ -467,8 +471,12 @@ function MainAppNavigation() {
   }
 
   // Navigate to search screen with preset filters
-  const handleNavigateToSearch = (query: string = '', area: string = 'All') => {
-    setSearchParams({ query, area });
+  const handleNavigateToSearch = (
+    query: string = '',
+    area: string = 'All',
+    filters?: AdvancedSearchFilters
+  ) => {
+    setSearchParams({ query, area, filters });
     setStudentTab('search');
   };
 
@@ -482,13 +490,18 @@ function MainAppNavigation() {
           <StudentHomeRoute
             onSelectHostel={(h) => setSelectedHostel(h)}
             onNavigateToSearch={handleNavigateToSearch}
+            onNavigateTab={(tab) => setStudentTab(tab as StudentTab)}
+            onOpenPreferences={() => setStudentTab('profile')}
+            onOpenSavedSearches={() => setStudentTab('profile')}
           />
         )}
         {studentTab === 'search' && (
           <StudentSearchRoute
             initialSearchQuery={searchParams.query}
             initialArea={searchParams.area}
+            initialFilters={searchParams.filters}
             onSelectHostel={(h) => setSelectedHostel(h)}
+            onBack={() => setStudentTab('home')}
           />
         )}
         {studentTab === 'saved' && (
@@ -501,7 +514,11 @@ function MainAppNavigation() {
           <StudentBookingsScreen onExplore={() => setStudentTab('home')} />
         )}
         {studentTab === 'profile' && (
-          <StudentProfileScreen onOpenAuthModal={() => setIsAuthModalVisible(true)} />
+          <StudentProfileScreen
+            onOpenAuthModal={() => setIsAuthModalVisible(true)}
+            onSelectHostel={(h) => setSelectedHostel(h)}
+            onRunSearch={(filters, query) => handleNavigateToSearch(query || '', filters?.area || 'All', filters)}
+          />
         )}
       </View>
 

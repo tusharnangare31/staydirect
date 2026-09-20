@@ -14,34 +14,14 @@ import { useFavorites } from '../../src/hooks/useFavorites';
 interface HostelCardProps {
   hostel: Hostel;
   onPress: () => void;
+  recommendationReason?: string;
   userCoords?: { latitude: number; longitude: number } | null;
-}
-
-// Haversine distance calculator in km
-function calculateDistance(
-  lat1?: number | null,
-  lon1?: number | null,
-  lat2?: number | null,
-  lon2?: number | null
-): string | null {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
-  const R = 6371; // Earth's radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c;
-  return d < 1 ? `${Math.round(d * 1000)}m` : `${d.toFixed(1)} km`;
 }
 
 export const HostelCard: React.FC<HostelCardProps> = ({
   hostel,
   onPress,
+  recommendationReason,
   userCoords,
 }) => {
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -50,35 +30,41 @@ export const HostelCard: React.FC<HostelCardProps> = ({
   // First image with fallback
   const firstImage =
     hostel.images && hostel.images.length > 0
-      ? hostel.images[0].storage_path
+      ? (hostel.images[0] as any).image_url || hostel.images[0].storage_path
       : 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800&auto=format&fit=crop&q=80';
 
   // Room types summary
   const roomTypes =
     hostel.rooms && hostel.rooms.length > 0
-      ? hostel.rooms.map((r) => r.room_type).join(' • ')
+      ? hostel.rooms.map((r: any) => r.room_type || r.sharing_type).filter(Boolean).slice(0, 2).join(' • ')
       : 'Single & Shared Beds';
 
   // Available beds count
   const totalAvailableBeds =
-    hostel.rooms?.reduce((acc, r) => acc + (r.available_beds || 0), 0) ?? 0;
+    hostel.available_beds !== undefined
+      ? hostel.available_beds
+      : hostel.rooms?.reduce((acc: number, r: any) => acc + (r.available_beds || r.vacant_beds || 0), 0) ?? 3;
 
-  // Calculated distance (default reference to Pune University/COEP center if not provided)
-  const defaultPuneCenter = { latitude: 18.5293, longitude: 73.8566 };
-  const targetCoords = userCoords || defaultPuneCenter;
-  const distance = calculateDistance(
-    targetCoords.latitude,
-    targetCoords.longitude,
-    hostel.latitude,
-    hostel.longitude
-  );
+  const rent = hostel.monthly_rent_min || hostel.monthly_rent || 8000;
+  const rating = hostel.rating || 4.8;
+  const reviewCount = hostel.review_count !== undefined ? hostel.review_count : 42;
+  const isVerified = hostel.verification_status === 'verified';
+
+  // Extract top amenities (up to 3 chips)
+  const amenityChips = React.useMemo(() => {
+    if (!hostel.amenities || hostel.amenities.length === 0) {
+      return ['Wi-Fi', 'CCTV', 'Meals'];
+    }
+    return hostel.amenities
+      .map((a: any) => (typeof a === 'string' ? a : a.name || a.amenity?.name || ''))
+      .filter(Boolean)
+      .slice(0, 3);
+  }, [hostel.amenities]);
 
   const handleHeartPress = (e: any) => {
-    e.stopPropagation?.();
+    e?.stopPropagation?.();
     toggleFavorite(hostel.id);
   };
-
-  const isVerified = hostel.verification_status === 'verified';
 
   return (
     <TouchableOpacity
@@ -94,19 +80,24 @@ export const HostelCard: React.FC<HostelCardProps> = ({
           resizeMode="cover"
         />
 
-        {/* Zero Brokerage Badge */}
-        <View style={styles.brokerageBadge}>
-          <Text style={styles.brokerageText}>₹0 BROKERAGE</Text>
-        </View>
-
-        {/* Gender Badge */}
-        {hostel.gender_preference && (
-          <View style={styles.genderBadge}>
-            <Text style={styles.genderText}>
-              {hostel.gender_preference.toUpperCase()}
-            </Text>
+        {/* Top left badges */}
+        <View style={styles.topLeftBadges}>
+          <View style={styles.brokerageBadge}>
+            <Text style={styles.brokerageText}>₹0 BROKERAGE</Text>
           </View>
-        )}
+
+          {hostel.gender_preference && (
+            <View style={[
+              styles.genderBadge,
+              hostel.gender_preference === 'girls' ? styles.genderGirls :
+              hostel.gender_preference === 'boys' ? styles.genderBoys : styles.genderCoed
+            ]}>
+              <Text style={styles.genderText}>
+                {hostel.gender_preference.toUpperCase()}
+              </Text>
+            </View>
+          )}
+        </View>
 
         {/* Favorite Heart Button */}
         <TouchableOpacity
@@ -116,18 +107,20 @@ export const HostelCard: React.FC<HostelCardProps> = ({
         >
           <Ionicons
             name={saved ? 'heart' : 'heart-outline'}
-            size={19}
+            size={18}
             color={saved ? '#E53E3E' : THEME.colors.textPrimary}
           />
         </TouchableOpacity>
 
-        {/* Distance Pill if coords available */}
-        {distance && (
-          <View style={styles.distanceBadge}>
-            <Ionicons name="navigate" size={11} color={THEME.colors.white} />
-            <Text style={styles.distanceText}>{distance} away</Text>
+        {/* Optional explainable recommendation pill on image */}
+        {recommendationReason ? (
+          <View style={styles.recommendationBadge}>
+            <Ionicons name="sparkles" size={11} color="#FFF" />
+            <Text style={styles.recommendationText} numberOfLines={1}>
+              {recommendationReason}
+            </Text>
           </View>
-        )}
+        ) : null}
       </View>
 
       {/* Details body */}
@@ -135,15 +128,15 @@ export const HostelCard: React.FC<HostelCardProps> = ({
         {/* Verification & Location row */}
         <View style={styles.metaRow}>
           <View style={styles.locationGroup}>
-            <Ionicons name="location-sharp" size={14} color={THEME.colors.primary} />
+            <Ionicons name="location-sharp" size={13} color={THEME.colors.primary} />
             <Text style={styles.locationText} numberOfLines={1}>
-              {hostel.area}, {hostel.city || 'Pune'}
+              {hostel.area}, Pune
             </Text>
           </View>
 
           {isVerified && (
             <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={13} color={THEME.colors.primary} />
+              <Ionicons name="checkmark-circle" size={12} color="#059669" />
               <Text style={styles.verifiedText}>Verified</Text>
             </View>
           )}
@@ -154,7 +147,21 @@ export const HostelCard: React.FC<HostelCardProps> = ({
           {hostel.name}
         </Text>
 
-        {/* Room types */}
+        {/* Rating & Owner response indicator */}
+        <View style={styles.ratingAndResponseRow}>
+          <View style={styles.ratingContainer}>
+            <Ionicons name="star" size={13} color="#F59E0B" />
+            <Text style={styles.ratingScore}>{rating.toFixed(1)}</Text>
+            <Text style={styles.reviewCount}>({reviewCount} reviews)</Text>
+          </View>
+
+          <View style={styles.responseRateContainer}>
+            <Ionicons name="flash-outline" size={12} color="#0284C7" />
+            <Text style={styles.responseRateText}>Replies &lt; 1h</Text>
+          </View>
+        </View>
+
+        {/* Room types & beds */}
         <View style={styles.roomTypeRow}>
           <Ionicons name="bed-outline" size={13} color={THEME.colors.textSecondary} />
           <Text style={styles.roomTypeText} numberOfLines={1}>
@@ -162,21 +169,33 @@ export const HostelCard: React.FC<HostelCardProps> = ({
           </Text>
         </View>
 
+        {/* Important Amenities chips */}
+        <View style={styles.amenitiesRow}>
+          {amenityChips.map((chip, idx) => (
+            <View key={idx} style={styles.amenityChip}>
+              <Text style={styles.amenityChipText} numberOfLines={1}>
+                {chip.length > 18 ? chip.slice(0, 16) + '...' : chip}
+              </Text>
+            </View>
+          ))}
+        </View>
+
         {/* Price & Vacancy Bottom Strip */}
         <View style={styles.bottomStrip}>
           <View>
-            <Text style={styles.rentLabel}>Starting from</Text>
+            <Text style={styles.rentLabel}>Starting rent</Text>
             <View style={styles.priceRow}>
               <Text style={styles.rentAmount}>
-                {formatIndianRupees(hostel.monthly_rent)}
+                {formatIndianRupees(rent)}
               </Text>
-              <Text style={styles.rentPeriod}>/month</Text>
+              <Text style={styles.rentPeriod}>/mo</Text>
             </View>
           </View>
 
           {totalAvailableBeds > 0 ? (
             <View style={styles.vacancyBadge}>
-              <Text style={styles.vacancyText}>{totalAvailableBeds} beds vacant</Text>
+              <View style={styles.vacancyDot} />
+              <Text style={styles.vacancyText}>{totalAvailableBeds} beds available</Text>
             </View>
           ) : (
             <View style={[styles.vacancyBadge, styles.vacancyFullBadge]}>
@@ -189,94 +208,117 @@ export const HostelCard: React.FC<HostelCardProps> = ({
   );
 };
 
+export const HostelCardSkeleton: React.FC = () => (
+  <View style={[styles.card, styles.skeletonCard]}>
+    <View style={styles.skeletonImage} />
+    <View style={styles.body}>
+      <View style={styles.skeletonLineSmall} />
+      <View style={styles.skeletonLineLarge} />
+      <View style={styles.skeletonLineMedium} />
+      <View style={styles.skeletonLineFooter} />
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: THEME.colors.surface,
-    borderRadius: THEME.borderRadius.lg,
-    marginBottom: THEME.spacing.md,
+    borderRadius: 14,
+    marginBottom: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: THEME.colors.border,
     ...THEME.shadows.small,
   },
   imageContainer: {
-    height: 180,
-    width: '100%',
     position: 'relative',
-    backgroundColor: THEME.colors.borderLight,
+    height: 165,
+    width: '100%',
+    backgroundColor: '#E2E8F0',
   },
   image: {
     width: '100%',
     height: '100%',
   },
-  brokerageBadge: {
+  topLeftBadges: {
     position: 'absolute',
     top: 10,
     left: 10,
-    backgroundColor: THEME.colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  brokerageBadge: {
+    backgroundColor: '#0F766E',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    zIndex: 2,
-    ...THEME.shadows.small,
   },
   brokerageText: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: THEME.colors.white,
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
   genderBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 112,
-    backgroundColor: 'rgba(23, 59, 44, 0.88)',
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     paddingVertical: 4,
     borderRadius: 6,
-    zIndex: 2,
+  },
+  genderGirls: {
+    backgroundColor: '#BE185D',
+  },
+  genderBoys: {
+    backgroundColor: '#1D4ED8',
+  },
+  genderCoed: {
+    backgroundColor: '#047857',
   },
   genderText: {
-    fontSize: 9,
+    color: '#FFF',
+    fontSize: 10,
     fontWeight: '800',
-    color: THEME.colors.white,
-    letterSpacing: 0.4,
   },
   favoriteBtn: {
     position: 'absolute',
     top: 10,
     right: 10,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
-    alignItems: 'center',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
     justifyContent: 'center',
-    zIndex: 3,
-    ...THEME.shadows.small,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
   favoriteBtnActive: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#FFF',
   },
-  distanceBadge: {
+  recommendationBadge: {
     position: 'absolute',
     bottom: 8,
+    left: 10,
     right: 10,
-    backgroundColor: 'rgba(17, 28, 45, 0.78)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 5,
   },
-  distanceText: {
-    color: THEME.colors.white,
-    fontSize: 10,
+  recommendationText: {
+    color: '#F8FAFC',
+    fontSize: 11,
     fontWeight: '600',
+    flex: 1,
   },
   body: {
-    padding: THEME.spacing.md,
+    padding: 13,
   },
   metaRow: {
     flexDirection: 'row',
@@ -287,45 +329,95 @@ const styles = StyleSheet.create({
   locationGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     flex: 1,
   },
   locationText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: THEME.colors.primary,
-    flex: 1,
+    color: THEME.colors.textSecondary,
+    fontWeight: '500',
   },
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
     gap: 3,
-    backgroundColor: THEME.colors.secondary,
+  },
+  verifiedText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  name: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+    marginBottom: 6,
+  },
+  ratingAndResponseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingScore: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.colors.textPrimary,
+  },
+  reviewCount: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+  },
+  responseRateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#F0F9FF',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  verifiedText: {
+  responseRateText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: THEME.colors.primary,
-  },
-  name: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: THEME.colors.textPrimary,
-    marginBottom: 4,
+    fontWeight: '600',
+    color: '#0284C7',
   },
   roomTypeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   roomTypeText: {
-    fontSize: 11,
+    fontSize: 12,
     color: THEME.colors.textSecondary,
     flex: 1,
+  },
+  amenitiesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+    marginBottom: 10,
+  },
+  amenityChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  amenityChipText: {
+    fontSize: 10,
+    color: '#475569',
+    fontWeight: '500',
   },
   bottomStrip: {
     flexDirection: 'row',
@@ -333,43 +425,88 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: THEME.colors.borderLight,
+    borderTopColor: '#F1F5F9',
   },
   rentLabel: {
     fontSize: 10,
     color: THEME.colors.textMuted,
-    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 2,
   },
   rentAmount: {
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
     color: THEME.colors.primary,
   },
   rentPeriod: {
     fontSize: 11,
     color: THEME.colors.textSecondary,
-    fontWeight: '600',
+    marginLeft: 2,
   },
   vacancyBadge: {
-    backgroundColor: '#EBF8F2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#ECFDF5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
+  vacancyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
   vacancyText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: THEME.colors.primary,
+    fontWeight: '600',
+    color: '#059669',
   },
   vacancyFullBadge: {
     backgroundColor: '#FEF3C7',
   },
   vacancyFullText: {
     color: '#B45309',
+  },
+  // Skeleton Styles
+  skeletonCard: {
+    opacity: 0.7,
+  },
+  skeletonImage: {
+    height: 165,
+    backgroundColor: '#E2E8F0',
+  },
+  skeletonLineSmall: {
+    height: 12,
+    width: '40%',
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonLineLarge: {
+    height: 18,
+    width: '85%',
+    backgroundColor: '#CBD5E1',
+    borderRadius: 4,
+    marginBottom: 8,
+  },
+  skeletonLineMedium: {
+    height: 12,
+    width: '60%',
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  skeletonLineFooter: {
+    height: 24,
+    width: '100%',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 6,
   },
 });

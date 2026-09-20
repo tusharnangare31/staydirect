@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { THEME } from '../../src/constants/theme';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAdminStats, useAdminActions } from '../../src/hooks/useAdmin';
+import { AdminSearchAnalyticsSection } from '../../src/screens/admin/AdminSearchAnalyticsSection';
 
 export interface AdminDashboardProps {
   onNavigateToVerifications?: () => void;
@@ -329,6 +330,9 @@ export const AdminDashboardScreen: React.FC<AdminDashboardProps> = ({
           <Ionicons name="chevron-forward" size={18} color={THEME.colors.textSecondary} />
         </TouchableOpacity>
       </View>
+
+      {/* Phase 9: Search & Discovery Analytics Section */}
+      <AdminSearchAnalyticsSection />
 
       {/* Recent Admin Audit Log */}
       <View style={styles.auditSection}>

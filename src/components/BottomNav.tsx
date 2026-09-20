@@ -21,23 +21,20 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const containerClass = `${
     isEmbedded
       ? 'sticky bottom-0 left-0 right-0 z-30'
-      : 'fixed bottom-0 left-0 right-0 z-40'
-  } bg-white/95 backdrop-blur-xl border-t border-[#E2E8F0]/80 shadow-[0_-4px_16px_rgba(0,54,42,0.06)]`;
+      : 'fixed bottom-0 left-0 right-0 z-40 md:hidden'
+  } bg-white/98 backdrop-blur-xl border-t border-[#E5E3D8] shadow-[0_-4px_20px_rgba(0,0,0,0.06)]`;
 
   if (userRole === 'student') {
     return (
-      <nav
-        className={containerClass}
-        aria-label="Bottom Navigation"
-      >
+      <nav className={containerClass} aria-label="Bottom Navigation">
         <div className="max-w-md mx-auto flex justify-around items-center h-16 px-4">
           {/* Home */}
           <button
             onClick={() => onNavigate('student-home')}
             className={`flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors ${
               currentScreen === 'student-home'
-                ? 'text-[#00362A] font-bold'
-                : 'text-[#64748B] hover:text-[#00362A]'
+                ? 'text-[#173B2C] font-bold'
+                : 'text-gray-500 hover:text-[#173B2C]'
             }`}
           >
             <span
@@ -56,8 +53,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             onClick={() => onNavigate('search')}
             className={`flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors ${
               currentScreen === 'search'
-                ? 'text-[#00362A] font-bold'
-                : 'text-[#64748B] hover:text-[#00362A]'
+                ? 'text-[#173B2C] font-bold'
+                : 'text-gray-500 hover:text-[#173B2C]'
             }`}
           >
             <span
@@ -76,8 +73,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             onClick={() => onNavigate('saved')}
             className={`flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors relative ${
               currentScreen === 'saved'
-                ? 'text-[#00362A] font-bold'
-                : 'text-[#64748B] hover:text-[#00362A]'
+                ? 'text-[#173B2C] font-bold'
+                : 'text-gray-500 hover:text-[#173B2C]'
             }`}
           >
             <div className="relative">
@@ -90,7 +87,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 bookmark
               </span>
               {savedCount > 0 && (
-                <span className="absolute -top-1 -right-2 bg-[#006C49] text-white text-[9px] font-bold px-1 rounded-full">
+                <span className="absolute -top-1 -right-2 bg-[#173B2C] text-white text-[9px] font-bold px-1 rounded-full">
                   {savedCount}
                 </span>
               )}
@@ -103,8 +100,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             onClick={() => onNavigate('profile')}
             className={`flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors ${
               currentScreen === 'profile'
-                ? 'text-[#00362A] font-bold'
-                : 'text-[#64748B] hover:text-[#00362A]'
+                ? 'text-[#173B2C] font-bold'
+                : 'text-gray-500 hover:text-[#173B2C]'
             }`}
           >
             <span
@@ -124,18 +121,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 
   // Owner Bottom Nav
   return (
-    <nav
-      className={containerClass}
-      aria-label="Owner Bottom Navigation"
-    >
+    <nav className={containerClass} aria-label="Owner Bottom Navigation">
       <div className="max-w-md mx-auto flex justify-around items-center h-16 px-4">
         {/* Home */}
         <button
           onClick={() => onNavigate('owner-home')}
           className={`flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors ${
             currentScreen === 'owner-home'
-              ? 'text-[#00362A] font-bold'
-              : 'text-[#64748B] hover:text-[#00362A]'
+              ? 'text-[#173B2C] font-bold'
+              : 'text-gray-500 hover:text-[#173B2C]'
           }`}
         >
           <span
@@ -154,8 +148,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           onClick={() => onNavigate('owner-listings')}
           className={`flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors ${
             currentScreen === 'owner-listings'
-              ? 'text-[#00362A] font-bold'
-              : 'text-[#64748B] hover:text-[#00362A]'
+              ? 'text-[#173B2C] font-bold'
+              : 'text-gray-500 hover:text-[#173B2C]'
           }`}
         >
           <span
@@ -174,8 +168,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           onClick={() => onNavigate('owner-inquiries')}
           className={`flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors relative ${
             currentScreen === 'owner-inquiries'
-              ? 'text-[#00362A] font-bold'
-              : 'text-[#64748B] hover:text-[#00362A]'
+              ? 'text-[#173B2C] font-bold'
+              : 'text-gray-500 hover:text-[#173B2C]'
           }`}
         >
           <div className="relative">
@@ -188,7 +182,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               forum
             </span>
             {unreadInquiriesCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#10B981] rounded-full ring-2 ring-white animate-pulse" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#15803D] rounded-full ring-2 ring-white animate-pulse" />
             )}
           </div>
           <span className="text-[10px] mt-0.5 tracking-tight">Inquiries</span>
@@ -199,8 +193,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           onClick={() => onNavigate('profile')}
           className={`flex flex-col items-center justify-center min-w-[56px] h-12 transition-colors ${
             currentScreen === 'profile'
-              ? 'text-[#00362A] font-bold'
-              : 'text-[#64748B] hover:text-[#00362A]'
+              ? 'text-[#173B2C] font-bold'
+              : 'text-gray-500 hover:text-[#173B2C]'
           }`}
         >
           <span

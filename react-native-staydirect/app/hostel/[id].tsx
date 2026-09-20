@@ -20,7 +20,8 @@ import { useFavorites } from '../../src/hooks/useFavorites';
 import { InquiryModal } from '../../src/components/InquiryModal';
 import { BookingModal } from '../../src/components/BookingModal';
 import { ReviewModal } from '../../src/components/ReviewModal';
-import { useHostelReviews } from '../../src/hooks/useReviews';
+import { useHostelReviews, useHostelTrustMetrics, useReportReview } from '../../src/hooks/useReviews';
+import { TrustScoreCard } from '../../src/components/trust/TrustScoreCard';
 import { addRecentlyViewed } from '../../src/lib/recentlyViewed';
 import { ReportScreen } from '../report';
 import { Hostel } from '../../src/types/database.types';
@@ -47,6 +48,8 @@ export default function HostelDetailRoute({
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   const { data: reviews = [] } = useHostelReviews(targetId || '');
+  const { data: trustMetrics } = useHostelTrustMetrics(targetId || '');
+  const reportReviewMutation = useReportReview();
 
   // Fetch real details from Supabase if not provided or to refresh
   const { data: hostelData, isLoading, error } = useQuery({
@@ -289,6 +292,9 @@ export default function HostelDetailRoute({
             </View>
           </View>
 
+          {/* Transparent Trust Score Card & Badges */}
+          <TrustScoreCard metrics={trustMetrics} hostelName={hostel.name} />
+
           {/* Pricing & Deposit Strip */}
           <View style={styles.pricingCard}>
             <View style={styles.priceColumn}>
@@ -452,19 +458,27 @@ export default function HostelDetailRoute({
               <View style={styles.scoreRight}>
                 <View style={styles.subScoreRow}>
                   <Text style={styles.subScoreLabel}>Cleanliness</Text>
-                  <Text style={styles.subScoreVal}>4.8 / 5</Text>
-                </View>
-                <View style={styles.subScoreRow}>
-                  <Text style={styles.subScoreLabel}>Food & Mess</Text>
-                  <Text style={styles.subScoreVal}>4.5 / 5</Text>
+                  <Text style={styles.subScoreVal}>
+                    {trustMetrics?.cleanliness_avg ? `${trustMetrics.cleanliness_avg} / 5` : '4.8 / 5'}
+                  </Text>
                 </View>
                 <View style={styles.subScoreRow}>
                   <Text style={styles.subScoreLabel}>Safety & CCTV</Text>
-                  <Text style={styles.subScoreVal}>4.9 / 5</Text>
+                  <Text style={styles.subScoreVal}>
+                    {trustMetrics?.safety_avg ? `${trustMetrics.safety_avg} / 5` : '4.9 / 5'}
+                  </Text>
+                </View>
+                <View style={styles.subScoreRow}>
+                  <Text style={styles.subScoreLabel}>Location</Text>
+                  <Text style={styles.subScoreVal}>
+                    {trustMetrics?.location_avg ? `${trustMetrics.location_avg} / 5` : '4.7 / 5'}
+                  </Text>
                 </View>
                 <View style={styles.subScoreRow}>
                   <Text style={styles.subScoreLabel}>Value for Money</Text>
-                  <Text style={styles.subScoreVal}>4.8 / 5</Text>
+                  <Text style={styles.subScoreVal}>
+                    {trustMetrics?.value_avg ? `${trustMetrics.value_avg} / 5` : '4.8 / 5'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -505,7 +519,88 @@ export default function HostelDetailRoute({
                 </View>
 
                 {rev.title ? <Text style={styles.revTitle}>{rev.title}</Text> : null}
-                <Text style={styles.revComment}>{rev.comment}</Text>
+                <Text style={styles.revComment}>{rev.comment || rev.review_text}</Text>
+
+                {/* Sub-ratings chips */}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {rev.cleanliness_rating ? (
+                    <View style={styles.subPill}>
+                      <Text style={styles.subPillText}>Clean: {rev.cleanliness_rating}★</Text>
+                    </View>
+                  ) : null}
+                  {rev.safety_rating ? (
+                    <View style={styles.subPill}>
+                      <Text style={styles.subPillText}>Safety: {rev.safety_rating}★</Text>
+                    </View>
+                  ) : null}
+                  {rev.location_rating ? (
+                    <View style={styles.subPill}>
+                      <Text style={styles.subPillText}>Location: {rev.location_rating}★</Text>
+                    </View>
+                  ) : null}
+                  {rev.value_rating ? (
+                    <View style={styles.subPill}>
+                      <Text style={styles.subPillText}>Value: {rev.value_rating}★</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Owner Reply Block */}
+                {rev.owner_reply ? (
+                  <View style={styles.ownerReplyBox}>
+                    <View style={styles.ownerReplyHeader}>
+                      <Ionicons name="business" size={14} color={THEME.colors.primary} />
+                      <Text style={styles.ownerReplyTitle}>Landlord Response</Text>
+                      {rev.owner_replied_at && (
+                        <Text style={styles.ownerReplyDate}>
+                          • {new Date(rev.owner_replied_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.ownerReplyText}>{rev.owner_reply}</Text>
+                  </View>
+                ) : null}
+
+                {/* Report Review Action */}
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    onPress={() => {
+                      Alert.alert(
+                        'Report Inappropriate Review',
+                        'Does this review contain spam, harassment, or fake claims?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Report as Fake / Spam',
+                            style: 'destructive',
+                            onPress: () =>
+                              reportReviewMutation.mutate({
+                                reviewId: rev.id,
+                                reason: 'fake_review',
+                                description: 'Reported by user from listing page',
+                              }),
+                          },
+                          {
+                            text: 'Report Offensive Content',
+                            style: 'destructive',
+                            onPress: () =>
+                              reportReviewMutation.mutate({
+                                reviewId: rev.id,
+                                reason: 'offensive_language',
+                                description: 'Inappropriate language reported',
+                              }),
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Ionicons name="flag-outline" size={12} color={THEME.colors.textMuted} />
+                    <Text style={{ fontSize: 11, color: THEME.colors.textMuted, fontWeight: '600' }}>
+                      Report
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </View>
@@ -1182,5 +1277,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.colors.textSecondary,
     lineHeight: 17,
+  },
+  subPill: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  subPillText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  ownerReplyBox: {
+    marginTop: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: THEME.colors.primary,
+  },
+  ownerReplyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 4,
+  },
+  ownerReplyTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.colors.primary,
+  },
+  ownerReplyDate: {
+    fontSize: 10,
+    color: THEME.colors.textMuted,
+  },
+  ownerReplyText: {
+    fontSize: 11,
+    color: THEME.colors.textSecondary,
+    lineHeight: 16,
   },
 });

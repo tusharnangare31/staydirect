@@ -34,12 +34,20 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   const [cleanlinessRating, setCleanlinessRating] = useState<number>(5);
   const [foodRating, setFoodRating] = useState<number>(4);
   const [safetyRating, setSafetyRating] = useState<number>(5);
+  const [locationRating, setLocationRating] = useState<number>(5);
   const [valueRating, setValueRating] = useState<number>(5);
+  const [selectedImageTags, setSelectedImageTags] = useState<string[]>([]);
   const [title, setTitle] = useState<string>('');
   const [comment, setComment] = useState<string>('');
   const [errorText, setErrorText] = useState<string>('');
 
   const submitMutation = useSubmitReview();
+
+  const toggleImageTag = (tag: string) => {
+    setSelectedImageTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
 
   const handleSubmit = async () => {
     setErrorText('');
@@ -56,13 +64,16 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         cleanlinessRating,
         foodRating,
         safetyRating,
+        locationRating,
         valueRating,
         title: title.trim() || 'Student Verified Review',
         comment: comment.trim(),
+        imageUrls: selectedImageTags,
       });
       onClose();
       setTitle('');
       setComment('');
+      setSelectedImageTags([]);
     } catch (err: any) {
       setErrorText(err.message || 'Failed to submit review');
     }
@@ -141,16 +152,55 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                 {renderStarPicker(cleanlinessRating, setCleanlinessRating, 20)}
               </View>
               <View style={styles.categoryItem}>
-                <Text style={styles.catLabel}>🍲 Food / Mess</Text>
-                {renderStarPicker(foodRating, setFoodRating, 20)}
-              </View>
-              <View style={styles.categoryItem}>
                 <Text style={styles.catLabel}>🛡️ Safety & CCTV</Text>
                 {renderStarPicker(safetyRating, setSafetyRating, 20)}
               </View>
               <View style={styles.categoryItem}>
+                <Text style={styles.catLabel}>📍 Location & Campus</Text>
+                {renderStarPicker(locationRating, setLocationRating, 20)}
+              </View>
+              <View style={styles.categoryItem}>
                 <Text style={styles.catLabel}>💰 Value for Money</Text>
                 {renderStarPicker(valueRating, setValueRating, 20)}
+              </View>
+              <View style={styles.categoryItem}>
+                <Text style={styles.catLabel}>🍲 Food / Mess</Text>
+                {renderStarPicker(foodRating, setFoodRating, 20)}
+              </View>
+            </View>
+
+            {/* Optional Photo / Verification Highlights */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Verified Room Features (Optional)</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                {['Study Desk', 'Clean Washroom', 'High-Speed Wi-Fi', '24/7 Hot Water', 'Mess Food Quality', 'Lockers'].map((tag) => {
+                  const active = selectedImageTags.includes(tag);
+                  return (
+                    <TouchableOpacity
+                      key={tag}
+                      style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                        backgroundColor: active ? THEME.colors.primary : '#F1F5F9',
+                        borderWidth: 1,
+                        borderColor: active ? THEME.colors.primary : '#E2E8F0',
+                      }}
+                      onPress={() => toggleImageTag(tag)}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: '600',
+                          color: active ? '#FFFFFF' : '#475569',
+                        }}
+                      >
+                        {active ? '✓ ' : '+ '}
+                        {tag}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 

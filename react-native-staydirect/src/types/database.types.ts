@@ -227,15 +227,31 @@ export interface AdminAction {
   admin?: Profile;
 }
 
+export type ReportCategory =
+  | 'fraud'
+  | 'unsafe_property'
+  | 'misleading_listing'
+  | 'harassment'
+  | 'payment_issue'
+  | 'fake_documents'
+  | 'property_mismatch'
+  | 'other';
+
 export interface Report {
   id: string;
   reporter_id: string;
   reported_user_id?: string | null;
   hostel_id?: string | null;
+  booking_id?: string | null;
+  report_type?: ReportCategory | string;
   reason: string;
   description?: string | null;
+  evidence_urls?: string[];
   status: ReportStatus;
+  assigned_admin?: string | null;
+  resolution?: string | null;
   created_at: string;
+  updated_at?: string;
   // Joined fields
   reporter?: Profile;
   reported_user?: Profile;
@@ -350,22 +366,101 @@ export interface AdminPaymentStats {
   deposit_volume: number;
 }
 
+export type ReviewStatus =
+  | 'pending'
+  | 'published'
+  | 'rejected'
+  | 'hidden'
+  | 'reported';
+
+export type ReviewReportReason =
+  | 'spam'
+  | 'fake_review'
+  | 'offensive_language'
+  | 'personal_information'
+  | 'harassment'
+  | 'irrelevant_content'
+  | 'fraudulent_activity'
+  | 'duplicate_review'
+  | 'other';
+
+export type ReviewReportStatus =
+  | 'pending'
+  | 'investigating'
+  | 'resolved'
+  | 'dismissed';
+
 export interface Review {
   id: string;
   hostel_id: string;
   student_id: string;
   booking_id?: string | null;
+  owner_id?: string;
   rating: number;
   cleanliness_rating?: number;
   food_rating?: number;
   safety_rating?: number;
+  location_rating?: number;
   value_rating?: number;
   title?: string | null;
   comment: string;
+  review_text?: string;
+  image_urls?: string[];
+  status: ReviewStatus;
+  owner_reply?: string | null;
+  owner_replied_at?: string | null;
+  moderated_by?: string | null;
+  moderated_at?: string | null;
+  moderation_reason?: string | null;
+  flagged_suspicious?: boolean;
+  suspicious_reason?: string | null;
   is_verified_stay?: boolean;
   created_at: string;
   updated_at?: string;
   student?: Profile;
+  hostel?: Hostel;
+}
+
+export interface ReviewReport {
+  id: string;
+  review_id: string;
+  reported_by: string;
+  reason: ReviewReportReason;
+  description?: string | null;
+  status: ReviewReportStatus;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  resolution_notes?: string | null;
+  created_at: string;
+  reporter?: Profile;
+  review?: Review;
+}
+
+export interface TrustBadge {
+  id: string;
+  title: string;
+  icon: string;
+  color: string;
+  description: string;
+}
+
+export interface HostelTrustMetrics {
+  hostel_id: string;
+  trust_score: number;
+  average_rating: number;
+  review_count: number;
+  cleanliness_avg: number;
+  safety_avg: number;
+  location_avg: number;
+  value_avg: number;
+  completed_booking_count: number;
+  response_rate: number;
+  average_response_time: string;
+  verification_status: string;
+  complaint_count: number;
+  cancellation_rate: number;
+  badges: TrustBadge[];
+  last_updated: string;
 }
 
 export interface PlatformSetting {
@@ -374,5 +469,151 @@ export interface PlatformSetting {
   setting_value: any;
   description?: string | null;
   updated_at: string;
+}
+
+// ====================================================================
+// Phase 9: Advanced Search, Preferences, Alerts & Recommendations Types
+// ====================================================================
+
+export type FoodPreference =
+  | 'any'
+  | 'veg'
+  | 'non_veg'
+  | 'food_included'
+  | 'food_not_included';
+
+export type FurnishedStatus = 'furnished' | 'semi-furnished' | 'unfurnished';
+
+export interface StudentPreferences {
+  id: string;
+  student_id: string;
+  preferred_areas: string[];
+  min_budget: number;
+  max_budget: number;
+  preferred_room_types: string[];
+  preferred_occupancy: string[];
+  food_preference: FoodPreference;
+  gender_preference: 'any' | 'boys' | 'girls' | 'co-ed';
+  required_amenities: string[];
+  move_in_date?: string | null;
+  personalization_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecentlyViewedHostel {
+  id: string;
+  student_id: string;
+  hostel_id: string;
+  viewed_at: string;
+  hostel?: Hostel;
+}
+
+export interface SavedSearch {
+  id: string;
+  student_id: string;
+  name: string;
+  query?: string | null;
+  filters: Record<string, any>;
+  notification_enabled: boolean;
+  active: boolean;
+  last_alerted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  matching_count?: number;
+}
+
+export interface SavedSearchAlert {
+  id: string;
+  saved_search_id: string;
+  student_id: string;
+  hostel_id: string;
+  alerted_at: string;
+}
+
+export type SearchAnalyticsEventType =
+  | 'search_performed'
+  | 'filter_applied'
+  | 'hostel_opened'
+  | 'hostel_saved'
+  | 'inquiry_created'
+  | 'booking_started'
+  | 'booking_completed';
+
+export interface SearchAnalyticsItem {
+  id: string;
+  event_type: SearchAnalyticsEventType;
+  search_term?: string | null;
+  area?: string | null;
+  filters_applied?: Record<string, any>;
+  hostel_id?: string | null;
+  results_count?: number;
+  user_id?: string | null;
+  created_at: string;
+}
+
+export type SearchSortOption =
+  | 'relevance'
+  | 'price_asc'
+  | 'price_desc'
+  | 'rating'
+  | 'most_reviewed'
+  | 'newest'
+  | 'fast_response'
+  | 'popular';
+
+export interface AdvancedSearchFilters {
+  query?: string;
+  area?: string;
+  landmark?: string;
+  nearbyCollege?: string;
+  minRent?: number;
+  maxRent?: number;
+  maxDeposit?: number;
+  gender?: 'All' | 'Boys' | 'Girls' | 'Co-ed';
+  roomTypes?: string[];
+  occupancy?: string[];
+  foodPreference?: string;
+  furnishedStatus?: string;
+  amenities?: string[];
+  securityFeatures?: string[];
+  verifiedOwnerOnly?: boolean;
+  verifiedHostelOnly?: boolean;
+  minRating?: number;
+  completedStayReviewsOnly?: boolean;
+  fastResponseOnly?: boolean;
+  sortBy?: SearchSortOption;
+}
+
+export type RecommendationReasonType =
+  | 'budget_match'
+  | 'area_match'
+  | 'saved_similarity'
+  | 'amenity_match'
+  | 'popular_student'
+  | 'verified_new';
+
+export interface RecommendedHostel {
+  hostel: Hostel;
+  score: number;
+  reasons: string[];
+  primaryReason: string;
+}
+
+export interface AdminSearchInsightsData {
+  mostSearchedAreas: { area: string; count: number }[];
+  mostSearchedBudgets: { range: string; count: number }[];
+  popularAmenities: { amenity: string; count: number }[];
+  unfulfilledSearches: { query: string; area: string; count: number }[];
+  conversionRates: {
+    searches: number;
+    hostelViews: number;
+    inquiries: number;
+    bookingsCompleted: number;
+    searchToInquiryPct: number;
+    searchToBookingPct: number;
+  };
+  mostViewedHostels: { hostelId: string; name: string; area: string; views: number }[];
+  mostSavedHostels: { hostelId: string; name: string; area: string; saves: number }[];
 }
 
