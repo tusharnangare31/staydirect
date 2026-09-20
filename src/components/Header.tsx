@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
               </div>
               <span className="text-[10px] font-medium text-[#5C6470] -mt-0.5 hidden md:block">
-                Pune Hostels & PGs
+                Pune&apos;s Verified Hostels &amp; PGs
               </span>
             </div>
           </button>
